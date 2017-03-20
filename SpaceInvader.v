@@ -1,4 +1,3 @@
-// Part 2 skeleton
 
 module SpaceInvader(
 	CLOCK_50,						//	On Board 50 MHz
@@ -72,10 +71,40 @@ module SpaceInvader(
 	
 endmodule
 
-module player(
+module player(PlayerXpos, PlayerYpos, resetn, clk
+  );
+  input resetn,clk, btnLeft, btnRight; //btnLeft and btnRight are signals that go/are high when their corresponding buttons are pushed
+  output reg [8:0] PlayerXpos; //The X position of the Player model (Value Between 0 and 320) 9bit
+  output reg [7:0] PlayerYpos; // The Y position of the Player model (Value Between 0 and 240) 8bit
+  
+  always @(posedge clk) begin //On each clock cycle
+  
+    if (!resetn) begin // Active low reset, so when resetn is low we set our Player position values to default (approximately middle of the screen horizontally, and bottom of the screen vertically)
+      PlayerXpos <= 9'd167; //Approx middle of screen
+      PlayerYpos <= 9'd200; // bottom of the screen (Adjusted to fit the actual player model)
+    end 
+    else begin
+      /*
+	Movement block of the Player, Detects corners and behaves accordingly
+	i.e. doesnt move model on edges if they are moving into the edge.
+      */
+      if (btnLeft) begin // On button left press
+	if (PlayerXpos == 0) //Check if the Player model is hugging the left edge of the screen
+	  PlayerXpos <= PlayerXpos; // Stay there
+	if (PlayerXpos > 0) // Check if there is still space to move left.
+	  PlayerXpos <= PlayerXpos - 9'd1; // Move one pixel left
+      end
+      else if (btnRight) begin // On button right press
+	if (PlayerXpos == 9'd305) //Check if the Player model is hugging the right edge of the screen (Adjusted for 15pixel wide model)
+	  PlayerXpos <= PlayerXpos; // Dont move
+	if (PlayerXpos < 0'd305) // Check if there is still space to move right.
+	  PlayerXpos <= PlayerXpos + 9'd1; // Move one pixel right
+      end   
+ 
+    end
+  end
 
-
-);
+endmodule 
 
 module alien(clk,resetn,initX,initY,alienX,alienY,isAlive,gamestart,gameover);
   input clk,resetn;
@@ -121,8 +150,7 @@ module alien(clk,resetn,initX,initY,alienX,alienY,isAlive,gamestart,gameover);
       end else if ((alienX == initX + 25) && (direction == 1)) begin
 	direction <= 0;
 	alienY <= gameover ? alienY : (alienY + 10);
-
-  end
+      end
+    end
   
-
 endmodule 
