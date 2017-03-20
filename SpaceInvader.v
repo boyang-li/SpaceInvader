@@ -1,5 +1,6 @@
-
-module SpaceInvader(
+// This is the top layer of the game
+// FPGA device: Cyclone5 series
+module fpga_top(
 	CLOCK_50,						//	On Board 50 MHz
 	// Your inputs and outputs here
         KEY,
@@ -15,9 +16,9 @@ module SpaceInvader(
 	VGA_B   						//	VGA Blue[9:0]
 	);
 
-	input			CLOCK_50;				//	50 MHz
+	input		CLOCK_50;				//	50 MHz
 	input   [9:0]   SW;
-	input   [3:0]   KEY;
+	input   [4:0]   KEY;
 
 	// Declare your inputs and outputs here
 	// Do not change the following outputs
@@ -66,22 +67,49 @@ module SpaceInvader(
 			
 	// Put your code here. Your code should produce signals x,y,colour and writeEn/plot
 	// for the VGA controller, in addition to any other functionality your design may require.
-	
-	
+
 	
 endmodule
 
-module player(PlayerXpos, PlayerYpos, resetn, clk
-  );
-  input resetn,clk, btnLeft, btnRight; //btnLeft and btnRight are signals that go/are high when their corresponding buttons are pushed
-  output reg [8:0] PlayerXpos; //The X position of the Player model (Value Between 0 and 320) 9bit
-  output reg [7:0] PlayerYpos; // The Y position of the Player model (Value Between 0 and 240) 8bit
+module space_invader(clk,resetn,btnL,btnR,fire,btnStart,VGA_R,VGA_G,VGA_B,VGA_hSync,VGA_vSync);
+  input clk,resetn;
+  input btnL,btnR,fire,btnStart;
+  output reg [3:0] VGA_R,VGA_G,VGA_B;
+  output VGA_hSync,VGA_vSync;
+  
+  reg CLK_50, CLK_25;
+  wire pulseL,pulseR,truePulseL,truePulseR;
+  wire [8:0] haddr;
+  wire [7:0] vaddr;
+  wire [8:0] playerXpos;
+  wire [7:0] playerYpos;
+  
+  reg [8:0] player_addr;
+  wire [8:0]ship_addr;
+  wire [7:0]player_out;
+  
+  reg [2:0] R,G,B;
+  
+  player PLAYER(
+    .clk(CLK_25),
+    .resetn(resetn),
+    .btnLeft(truePulseL),
+    .btnRight(truePulseR),
+    .playerXpos(playerXpos),
+    .playerYpos(playerYpos);
+endmodule
+
+module player(clk,resetn,btnLeft,btnRight,playerXpos,playerYpos);
+  input clk,resetn;
+  input btnLeft,btnRight; //btnLeft and btnRight are signals that go/are high when their corresponding buttons are pushed
+  output reg [8:0] playerXpos; //The X position of the Player model (Value Between 0 and 320) 9bit
+  output reg [7:0] playerYpos; // The Y position of the Player model (Value Between 0 and 240) 8bit
   
   always @(posedge clk) begin //On each clock cycle
   
     if (!resetn) begin // Active low reset, so when resetn is low we set our Player position values to default (approximately middle of the screen horizontally, and bottom of the screen vertically)
-      PlayerXpos <= 9'd167; //Approx middle of screen
-      PlayerYpos <= 9'd200; // bottom of the screen (Adjusted to fit the actual player model)
+      playerXpos <= 9'd167; //Approx middle of screen
+      playerYpos <= 9'd200; // bottom of the screen (Adjusted to fit the actual player model)
     end 
     else begin
       /*
@@ -89,16 +117,16 @@ module player(PlayerXpos, PlayerYpos, resetn, clk
 	i.e. doesnt move model on edges if they are moving into the edge.
       */
       if (btnLeft) begin // On button left press
-	if (PlayerXpos == 0) //Check if the Player model is hugging the left edge of the screen
-	  PlayerXpos <= PlayerXpos; // Stay there
-	if (PlayerXpos > 0) // Check if there is still space to move left.
-	  PlayerXpos <= PlayerXpos - 9'd1; // Move one pixel left
+	if (playerXpos == 0) //Check if the Player model is hugging the left edge of the screen
+	  playerXpos <= playerXpos; // Stay there
+	if (playerXpos > 0) // Check if there is still space to move left.
+	  playerXpos <= playerXpos - 9'd1; // Move one pixel left
       end
       else if (btnRight) begin // On button right press
-	if (PlayerXpos == 9'd305) //Check if the Player model is hugging the right edge of the screen (Adjusted for 15pixel wide model)
-	  PlayerXpos <= PlayerXpos; // Dont move
-	if (PlayerXpos < 0'd305) // Check if there is still space to move right.
-	  PlayerXpos <= PlayerXpos + 9'd1; // Move one pixel right
+	if (playerXpos == 9'd305) //Check if the Player model is hugging the right edge of the screen (Adjusted for 15pixel wide model)
+	  playerXpos <= playerXpos; // Dont move
+	if (playerXpos < 0'd305) // Check if there is still space to move right.
+	  playerXpos <= playerXpos + 9'd1; // Move one pixel right
       end   
  
     end
