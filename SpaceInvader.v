@@ -106,6 +106,14 @@ module space_invader(clk,resetn,btnL,btnR,fire,btnStart,x,y,colour,wren);
 
   ram32x4 MEMPLAYER(player_addr,CLK_25,player_din,wren,player_dout);
 
+  reg [8:0] player_addr;
+  wire [8:0] player_addr_wire;
+  wire [7:0] player_data_wire;
+	wire btnShoot_wire;
+// Projectile wires
+  wire [8:0] projectileXpos;
+  wire [7:0] projectileYpos;
+
   // Generate a 25MHz clock from the on-board 50MHz clock
   clk_25 CLOCK_25(
     .clk(clk),
@@ -115,10 +123,27 @@ module space_invader(clk,resetn,btnL,btnR,fire,btnStart,x,y,colour,wren);
   player PLAYER(
     .clk(CLK_25),
     .resetn(resetn),
+	.btnShoot(fire),
+
     .btnLeft(pulseL),
     .btnRight(pulseR),
     .playerXpos(playerXpos),
-    .playerYpos(playerYpos));
+    .playerYpos(playerYpos),
+	.shoot(btnShoot_wire)
+);
+
+	projectile p0(
+
+		.startXpos(playerXpos),
+		.startYpos(playerYpos),
+		.shoot(btnShoot_wire),
+		.clk(CLK_25),
+		.resetn(resetn),
+		.direction(1'b0),
+
+		.projectileXpos(projectileXpos),
+		.projectileYpos(projectileYpos)
+	);
 
   motion_debounce MDL(clk,resetn,btnL,cleanL);
   motion_debounce MDR(clk,resetn,btnR,cleanR);
@@ -169,17 +194,59 @@ module space_invader(clk,resetn,btnL,btnR,fire,btnStart,x,y,colour,wren);
 
 endmodule
 
-module player(clk,resetn,btnLeft,btnRight,playerXpos,playerYpos);
+module projectile(projectileXpos, projectileYpos, startXpos, startYpos, shoot, clk, resetn, direction);
+	input clk, resetn;
+	input [8:0] startXpos;
+	input [7:0] startYpos;
+	input shoot, direction; //direction 0 = up, 1 = down
+
+	output reg [8:0] projectileXpos; // the current X position of the projectile
+	output reg [7:0] projectileYpos; // the current Y position of the projectile
+	output reg [2:0] colour;
+
+	always @(posedge clk) begin
+
+		if (!resetn) begin //active low reset, on reset assign the shot value to not be high
+			shot <= 1'b0;	//we set this to low to indicate that the projectile isnt in motion.
+			colour <= 3'b0; // set projectile colour to black so it blends with
+		end
+		else begin
+			if (shoot) begin
+				shot <= 1'b1; // indicate that the projectile should be in motion (incrementing the Y position)
+				projectileXpos <= startXpos; // assign the starting X position of the projectile to be the X position of the entity that shot it at that moment
+				projectileYpos <= startYpos; // assign the starting Y position of the projectile to be the Y position of the entity that shot it at that moment
+				colour <= 3'b111; //set the projectile colour to white so it stands out from the background (is visible)
+			end
+			if (shot) begin
+				if(direction) // check direction, not necessary for milestone one but added for future ease
+					projectileYpos <= projectileYpos + 1;	//projectile going down
+				else
+					projectileYpos <= projectileYpos - 1;	// projectile going up
+				if ((projectileYpos == 0) || (projectileYpos == 240))	//if the rocket reaches the end of the screen (top or bottom), dont have to worry about collision of enemies until later
+					//TODO
+					shot <= 1'b0;	//indicate that the bullet is no longer traveling across the screen, so stop incrementing the Yposition (indirectly does this by not entering the if shot 									statement
+			end
+
+		end
+
+
+	end
+
+endmodule
+
+module player(playerXpos,playerYpos, shoot, clk,resetn,btnLeft,btnRight, btnShoot);
   input clk,resetn;
-  input btnLeft,btnRight; //btnLeft and btnRight are signals that go/are high when their corresponding buttons are pushed
+  input btnLeft,btnRight, btnShoot; //btnLeft and btnRight are signals that go/are high when their corresponding buttons are pushed
   output reg [8:0] playerXpos; //The X position of the Player model (Value Between 0 and 320) 9bit
   output reg [7:0] playerYpos; // The Y position of the Player model (Value Between 0 and 240) 8bit
+  output reg shoot; // 1bit signal indicating whether or not the projectile should be rendered
 
   always @(posedge clk) begin //On each clock cycle
 
     if (!resetn) begin // Active low reset, so when resetn is low we set our Player position values to default (approximately middle of the screen horizontally, and bottom of the screen vertically)
       playerXpos <= 9'd167; //Approx middle of screen
       playerYpos <= 9'd200; // bottom of the screen (Adjusted to fit the actual player model)
+      shoot <= 1'b0; // Dont fire a projectile yet
     end
     else begin
       /*
@@ -198,7 +265,10 @@ module player(clk,resetn,btnLeft,btnRight,playerXpos,playerYpos);
 	if (playerXpos < 0'd305) // Check if there is still space to move right.
 	  playerXpos <= playerXpos + 9'd1; // Move one pixel right
       end
-
+      if (btnShoot) begin
+	//TODO
+	shoot <= 1'b1; // signal that the projectile should be fired
+      end
     end
   end
 
