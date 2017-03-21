@@ -35,7 +35,7 @@ module fpga_top(
 	assign resetn = KEY[0];
 
 	// Create the colour, x, y and writeEn wires that are inputs to the controller.
-	wire [8:0] colour;
+	wire [2:0] colour;
 	wire [8:0] x;
 	wire [7:0] y;
 	wire writeEn;
@@ -62,7 +62,7 @@ module fpga_top(
 
 	defparam VGA.RESOLUTION = "320x240";
 	defparam VGA.MONOCHROME = "FALSE";
-	defparam VGA.BITS_PER_COLOUR_CHANNEL = 3;
+	defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
 	defparam VGA.BACKGROUND_IMAGE = "black.mif";
 
 	// Put your code here. Your code should produce signals x,y,colour and writeEn/plot
@@ -77,35 +77,34 @@ module fpga_top(
 	  .btnStart(KEY[1]),
 	  .x(x),
 	  .y(y),
-	  .plot(writeEn)
+	  .wren(writeEn)
 	);
 endmodule
 
-module space_invader(clk,resetn,btnL,btnR,fire,btnStart,x,y,colour,plot);
+module space_invader(clk,resetn,btnL,btnR,fire,btnStart,x,y,colour,wren);
   input clk,resetn;
   input btnL,btnR,fire,btnStart;
 
-  output reg [8:0] colour;
+  output reg [2:0] colour;
   output reg [8:0] x;
   output reg [7:0] y;
-  output reg plot;
+  output reg wren;
 
-  // Game logic wires
-  reg CLK_25;
+  // General wires
+
   wire pulseL,pulseR,truePulseL,truePulseR;
   wire cleanL,cleanR;
-  //wire [8:0] haddr;
-  //wire [7:0] vaddr;
-  wire [2:0] R,G,B;
 
-  // Player wires
   wire [8:0] playerXpos;
   wire [7:0] playerYpos;
+  reg border, player_border
+  reg [4:0] player_addr; // Mem address corresponds to a X,Y pair
+  wire [3:0] player_din; // Mem data stores the RGB color for the pixel
+  wire [3:0] player_dout;
+  reg CLK_25;
+  wire R,G,B;
 
-  reg [8:0] player_addr;
-  wire [8:0] player_addr_wire;
-  wire [7:0] player_data_wire;
-
+  ram32x4 MEMPLAYER(player_addr,CLK_25,player_din,wren,player_dout);
 
   // Generate a 25MHz clock from the on-board 50MHz clock
   clk_25 CLOCK_25(
@@ -129,7 +128,6 @@ module space_invader(clk,resetn,btnL,btnR,fire,btnStart,x,y,colour,plot);
 
   // blk_mem_gen_0 MEMPLAYER(CLK_25,1,0,player_addr_wire,0,player_data_wire);
 
-  assign player_addr_wire = player_addr;
   //assign ship_addr =  (shipborder)? space_addr :
   //                  (lifeborder)? life_addr : 0;
 
@@ -141,9 +139,32 @@ module space_invader(clk,resetn,btnL,btnR,fire,btnStart,x,y,colour,plot);
   // RGB OUTPUT
   always @(posedge clk)
   begin
-    colour[8:6] <= R;
-    colour[5:3] <= G;
-    colour[2:0] <= B;
+    colour[2] <= R;
+    colour[1] <= G;
+    colour[0] <= B;
+  end
+
+  // Update colour channels with memory data based on game logics
+  always@(posedge clk)
+  begin
+    R <=  (player_border)   ? player_dout[2] : 0;
+    G <=  (player_border)   ? player_dout[1] :
+          (border)       ? 1 : 0;
+    B <=  (player_border)   ? player_dout[0] ; 0;
+  end else begin
+    R <= 0;
+    B <= 0;
+    G <= 0;
+  end
+
+  // Update game logics at the 25MHz pulse
+  always @(posedge CLK_25)
+  begin
+    if(!resetn) begin
+      player_addr <= 0;
+    end else begin
+      player_addr <= ( == playerYpos) ? 0 : ((player_border)? (player_addr +  1'b1) : (player_addr));
+    end
   end
 
 endmodule
