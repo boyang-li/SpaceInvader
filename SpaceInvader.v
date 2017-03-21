@@ -3,8 +3,8 @@
 module fpga_top(
 	CLOCK_50,						//	On Board 50 MHz
 	// Your inputs and outputs here
-        KEY,
-        SW,
+  KEY,
+  SW,
 	// The ports below are for the VGA output.  Do not change.
 	VGA_CLK,   						//	VGA Clock
 	VGA_HS,							//	VGA H_SYNC
@@ -30,12 +30,12 @@ module fpga_top(
 	output	[9:0]	VGA_R;   				//	VGA Red[9:0]
 	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
 	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
-	
+
 	wire resetn;
 	assign resetn = KEY[0];
-	
+
 	// Create the colour, x, y and writeEn wires that are inputs to the controller.
-	wire [2:0] colour;
+	wire [8:0] colour;
 	wire [8:0] x;
 	wire [7:0] y;
 	wire writeEn;
@@ -59,12 +59,12 @@ module fpga_top(
 		.VGA_BLANK(VGA_BLANK_N),
 		.VGA_SYNC(VGA_SYNC_N),
 		.VGA_CLK(VGA_CLK));
-		
-	defparam VGA.RESOLUTION = "321x240";
+
+	defparam VGA.RESOLUTION = "320x240";
 	defparam VGA.MONOCHROME = "FALSE";
-	defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
+	defparam VGA.BITS_PER_COLOUR_CHANNEL = 3;
 	defparam VGA.BACKGROUND_IMAGE = "black.mif";
-			
+
 	// Put your code here. Your code should produce signals x,y,colour and writeEn/plot
 	// for the VGA controller, in addition to any other functionality your design may require.
 
@@ -84,35 +84,35 @@ endmodule
 module space_invader(clk,resetn,btnL,btnR,fire,btnStart,x,y,colour,plot);
   input clk,resetn;
   input btnL,btnR,fire,btnStart;
- 
-  output reg [2:0] colour;
+
+  output reg [8:0] colour;
   output reg [8:0] x;
   output reg [7:0] y;
   output reg plot;
-  
+
   // Game logic wires
   reg CLK_25;
   wire pulseL,pulseR,truePulseL,truePulseR;
   wire cleanL,cleanR;
   //wire [8:0] haddr;
   //wire [7:0] vaddr;
-  wire R,G,B;
-  
+  wire [2:0] R,G,B;
+
   // Player wires
   wire [8:0] playerXpos;
   wire [7:0] playerYpos;
-  
+
   reg [8:0] player_addr;
   wire [8:0] player_addr_wire;
   wire [7:0] player_data_wire;
-  
-  
+
+
   // Generate a 25MHz clock from the on-board 50MHz clock
   clk_25 CLOCK_25(
     .clk(clk),
     .resetn(resetn),
     .clk_25(CLK_25));
-  
+
   player PLAYER(
     .clk(CLK_25),
     .resetn(resetn),
@@ -120,27 +120,32 @@ module space_invader(clk,resetn,btnL,btnR,fire,btnStart,x,y,colour,plot);
     .btnRight(pulseR),
     .playerXpos(playerXpos),
     .playerYpos(playerYpos));
-  
+
   motion_debounce MDL(clk,resetn,btnL,cleanL);
   motion_debounce MDR(clk,resetn,btnR,cleanR);
-  
+
   motion_pulse MPL(clk,resetn,cleanL,pulseL);
   motion_pulse MPR(clk,resetn,cleanR,pulseR);
-  
+
   // blk_mem_gen_0 MEMPLAYER(CLK_25,1,0,player_addr_wire,0,player_data_wire);
-  
+
   assign player_addr_wire = player_addr;
-  //assign ship_addr =  (shipborder)? space_addr : 
+  //assign ship_addr =  (shipborder)? space_addr :
   //                  (lifeborder)? life_addr : 0;
-  
+
   //assign truefire = (startscreen)? 0 : pulsefire;
   //assign truepulseL = (startscreen)? 0 : pulseL;
   //assign truepulseR = (startscreen)? 0 : pulseR;
   //assign totalgameover = (gameover) || (livesgameover);
-  
-  assign colour[2] = R;
-  assign colour[1] = G;
-  assign colour[0] = B;
+
+  // RGB OUTPUT
+  always @(posedge clk)
+  begin
+    colour[8:6] <= R;
+    colour[5:3] <= G;
+    colour[2:0] <= B;
+  end
+
 endmodule
 
 module player(clk,resetn,btnLeft,btnRight,playerXpos,playerYpos);
@@ -148,13 +153,13 @@ module player(clk,resetn,btnLeft,btnRight,playerXpos,playerYpos);
   input btnLeft,btnRight; //btnLeft and btnRight are signals that go/are high when their corresponding buttons are pushed
   output reg [8:0] playerXpos; //The X position of the Player model (Value Between 0 and 320) 9bit
   output reg [7:0] playerYpos; // The Y position of the Player model (Value Between 0 and 240) 8bit
-  
+
   always @(posedge clk) begin //On each clock cycle
-  
+
     if (!resetn) begin // Active low reset, so when resetn is low we set our Player position values to default (approximately middle of the screen horizontally, and bottom of the screen vertically)
       playerXpos <= 9'd167; //Approx middle of screen
       playerYpos <= 9'd200; // bottom of the screen (Adjusted to fit the actual player model)
-    end 
+    end
     else begin
       /*
 	Movement block of the Player, Detects corners and behaves accordingly
@@ -171,12 +176,12 @@ module player(clk,resetn,btnLeft,btnRight,playerXpos,playerYpos);
 	  playerXpos <= playerXpos; // Dont move
 	if (playerXpos < 0'd305) // Check if there is still space to move right.
 	  playerXpos <= playerXpos + 9'd1; // Move one pixel right
-      end   
- 
+      end
+
     end
   end
 
-endmodule 
+endmodule
 
 module alien(clk,resetn,initX,initY,alienX,alienY,isAlive,gamestart,gameover);
   input clk,resetn;
@@ -185,11 +190,11 @@ module alien(clk,resetn,initX,initY,alienX,alienY,isAlive,gamestart,gameover);
   input [7:0] initY;
   output reg [8:0] alienX;
   output reg [7:0] alienY;
-  
-  // TODO: 19-bits can support 512000 decimal numbers 
+
+  // TODO: 19-bits can support 512000 decimal numbers
   reg [18:0] counter;
   reg speed,direction;
-  
+
   always @(posedge clk)
   begin
     if (!resetn) begin
@@ -209,7 +214,7 @@ module alien(clk,resetn,initX,initY,alienX,alienY,isAlive,gamestart,gameover);
       end
     end
   end
-  
+
   always @(posedge clk)
   begin
     if (!resetn) begin
@@ -224,17 +229,17 @@ module alien(clk,resetn,initX,initY,alienX,alienY,isAlive,gamestart,gameover);
 	alienY <= gameover ? alienY : (alienY + 10);
       end
     end
-  
-endmodule 
+
+endmodule
 
 module motion_debounce(clk,resetn,noisy,clean);
   input clk,resetn,noisy;
   output reg clean;
-  
+
   reg [19:0] counter;
   reg temp;
   wire [19:0] edge_delay = 20'd1000000;
-  
+
   always @(posedge clk)
   begin
     if (!resetn) begin
@@ -250,7 +255,7 @@ module motion_debounce(clk,resetn,noisy,clean);
 	  clean <= clean;
 	  counter <= counter + 1'b1;
 	end
-      end else begin 
+      end else begin
 	counter <= 20'b0;
 	clean <= 1'b0;
       end
@@ -265,11 +270,11 @@ module motion_pulse(clk,resetn,level,pulse);
   reg [23:0] counter;
   reg [1:0] current_state;
   reg [1:0] next_state;
-   
+
   localparam  S0 = 2'd00,
               S1 = 2'd01;
-   
-  // FSM 
+
+  // FSM
   always @(posedge clk)
   begin
     case(current_state)
@@ -282,7 +287,7 @@ module motion_pulse(clk,resetn,level,pulse);
 	  next_state <= S0;
 	end
       end
-      
+
       S1:begin
 	if (counter == 24'd400_000) begin
 	  pulse <= 1'b1;
@@ -291,22 +296,22 @@ module motion_pulse(clk,resetn,level,pulse);
           pulse <= 0;
           counter <= counter + 1'b1;
         end
-	
+
 	if (level) begin
 	  next_state <= S1;
 	end else begin
 	  next_state <= S0;
 	end
       end
-      
+
       default: nextstate <= S0;
     endcase
   end
-  
-  // Set the new state 
+
+  // Set the new state
   always @(posedge clk)
   begin
-    if(!resetn) 
+    if(!resetn)
       current_state <= 2'b0;
     else
       current_state <= next_state;
@@ -317,7 +322,7 @@ endmodule
 module clock_25(clk,resetn,clk_25);
   input clk,resetn;
   output reg clk_25;
-  
+
   always@(posedge clk)
   begin
     if (!resetn) begin
@@ -331,9 +336,9 @@ endmodule
 module frame_pulse(clk_25,resetn,plot);
   input clk_25,resetn;
   output reg plot;
-  
+
   reg [18:0] counter;
-  
+
   always@(posedge clk_25)
   begin
     if (!resetn) begin
