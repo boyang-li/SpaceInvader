@@ -105,6 +105,10 @@ module space_invader(clk,resetn,btnL,btnR,fire,btnStart,x,y,colour,plot);
   reg [8:0] player_addr;
   wire [8:0] player_addr_wire;
   wire [7:0] player_data_wire;
+	wire btnShoot_wire;
+// Projectile wires
+  wire [8:0] projectileXpos;
+  wire [7:0] projectileYpos;
 
 
   // Generate a 25MHz clock from the on-board 50MHz clock
@@ -116,10 +120,27 @@ module space_invader(clk,resetn,btnL,btnR,fire,btnStart,x,y,colour,plot);
   player PLAYER(
     .clk(CLK_25),
     .resetn(resetn),
+	.btnShoot(fire),
+	
     .btnLeft(pulseL),
     .btnRight(pulseR),
     .playerXpos(playerXpos),
-    .playerYpos(playerYpos));
+    .playerYpos(playerYpos),
+	.shoot(btnShoot_wire)
+);
+
+	projectile p0(
+		
+		.startXpos(playerXpos),
+		.startYpos(playerYpos), 
+		.shoot(btnShoot_wire), 
+		.clk(CLK_25), 
+		.resetn(resetn), 
+		.direction(1'b0),
+	
+		.projectileXpos(projectileXpos),
+		.projectileYpos(projectileYpos)
+	);
 
   motion_debounce MDL(clk,resetn,btnL,cleanL);
   motion_debounce MDR(clk,resetn,btnR,cleanR);
@@ -190,7 +211,7 @@ endmodule
 
 module player(playerXpos,playerYpos, shoot, clk,resetn,btnLeft,btnRight, btnShoot);
   input clk,resetn;
-  input btnLeft,btnRight; //btnLeft and btnRight are signals that go/are high when their corresponding buttons are pushed
+  input btnLeft,btnRight, btnShoot; //btnLeft and btnRight are signals that go/are high when their corresponding buttons are pushed
   output reg [8:0] playerXpos; //The X position of the Player model (Value Between 0 and 320) 9bit
   output reg [7:0] playerYpos; // The Y position of the Player model (Value Between 0 and 240) 8bit
   output reg shoot; // 1bit signal indicating whether or not the projectile should be rendered
