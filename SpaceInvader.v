@@ -73,7 +73,7 @@ module fpga_top(
 	  .resetn(KEY[0]),
 	  .btnL(KEY[4]),
 	  .btnR(KEY[3]),
-	  .fire(KEY[2]),
+	  .btnFire(KEY[2]),
 	  .btnStart(KEY[1]),
 	  .x(x),
 	  .y(y),
@@ -81,14 +81,14 @@ module fpga_top(
 	);
 endmodule
 
-module space_invader(clk,resetn,btnL,btnR,fire,btnStart,x,y,colour,wren);
+module space_invader(clk,resetn,btnL,btnR,btnFire,btnStart,x,y,colour,wren);
   input clk,resetn;
-  input btnL,btnR,fire,btnStart;
+  input btnL,btnR,btnFire,btnStart;
 
-  output reg [2:0] colour;
+  output [2:0] colour;
   output reg [8:0] x;
   output reg [7:0] y;
-  output reg wren;
+  output wren;
 
   // General wires
 
@@ -120,10 +120,75 @@ module space_invader(clk,resetn,btnL,btnR,fire,btnStart,x,y,colour,wren);
     .resetn(resetn),
     .clk_25(CLK_25));
 
+  // Hack Stuff     -------------------------------------------------
+  reg slow_clk;
+
+  reg [31:0] slow_counter;
+  always @(posedge clk)
+    if (slow_counter == 50000) begin
+      slow_counter <= 0;
+      slow_clk <= ~slow_clk;
+    end else
+      slow_counter <= slow_counter + 1;
+
+  //The ship draw
+  wire [2:0] shipRGB;
+  reg [8:0] shipX;
+  always@(posedge slow_clk)
+    if(~btnL && |shipX)
+      shipX <= shipX - 1;
+    else if(~btnR && shipX<307)
+      shipX <= shipX + 1;
+  assign shipRGB = (x>shipX && x<shipX+12 && y>225 && y<230) ? 3'b111 : 0;
+
+  //Draw a bullet
+  reg [8:0] bulletX, bulletY;
+  reg fire, hit;
+  wire [2:0] bulletRGB;
+  always @(posedge slow_clk)
+    if(~btnFire && ~fire) begin
+      bulletX <= shipX+6;
+      fire <= 1;
+    end else if(fire && bulletY>0)
+      bulletY <= bulletY - 1;
+    else begin
+      fire <= 0;
+      bulletY <= 225;
+    end
+  // Don't need hit condition until next week!
+  //always@(posedge clk)
+    //if(bulletY>enemyY && bulletY < enemyY+25 && bulletX>enemyX && bulletX < enemyX+25)
+      //hit <= 1;
+    //else
+      //hit <= 0;
+  assign bulletRGB = (fire && y>bulletY && y<bulletY+12 && x>bulletX && x<bulletX+1) ? 3'b111 : 0;
+
+  // x,y counters
+  wire line,frame;
+  assign line = (x==319);
+  assign frame = (y==239);
+  assign wren = ((y>17 && y<257) && (x>71 && x<391));
+  assign colour = (wren) ? shipRGB|bulletRGB : 0;
+
+  always @(posedge clk_25)
+    if(line)
+      x <= 0;
+    else
+      x <= x + 1;
+
+  always @(posedge clk_25)
+    if(frame)
+      y <= 0;
+    else
+      y <= y + 1;
+
+  // ----------------------------------------------------------------
+
+
   player PLAYER(
     .clk(CLK_25),
     .resetn(resetn),
-	.btnShoot(fire),
+	  .btnShoot(btnFire),
 
     .btnLeft(pulseL),
     .btnRight(pulseR),
