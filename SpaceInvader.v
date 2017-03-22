@@ -18,7 +18,7 @@ module SpaceInvader(
 
   input   CLOCK_50;       //  50 MHz
   input   [9:0]   SW;
-  input   [4:0]   KEY;
+  input   [3:0]   KEY;
 
   // Declare your inputs and outputs here
   // Do not change the following outputs
@@ -36,8 +36,8 @@ module SpaceInvader(
 
   // Create the colour, x, y and writeEn wires that are inputs to the controller.
   wire [2:0] colour;
-  wire [8:0] x;
-  wire [7:0] y;
+  wire [7:0] x;
+  wire [6:0] y;
   wire writeEn;
 
   // Create an Instance of a VGA controller - there can be only one!
@@ -60,7 +60,7 @@ module SpaceInvader(
     .VGA_SYNC(VGA_SYNC_N),
     .VGA_CLK(VGA_CLK));
 
-  defparam VGA.RESOLUTION = "320x240";
+  defparam VGA.RESOLUTION = "160x120";
   defparam VGA.MONOCHROME = "FALSE";
   defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
   defparam VGA.BACKGROUND_IMAGE = "black.mif";
@@ -68,17 +68,92 @@ module SpaceInvader(
   // Put your code here. Your code should produce signals x,y,colour and writeEn/plot
   // for the VGA controller, in addition to any other functionality your design may require.
 
-  space_invader SI(
-    .clk(CLOCK_50),
-    .resetn(KEY[0]),
-    .btnL(KEY[4]),
-    .btnR(KEY[3]),
-    .btnFire(KEY[2]),
-    .btnStart(KEY[1]),
-    .x(x),
-    .y(y),
-    .wren(writeEn)
-  );
+  // space_invader SI(
+  //   .clk(CLOCK_50),
+  //   .resetn(KEY[0]),
+  //   .btnL(KEY[4]),
+  //   .btnR(KEY[3]),
+  //   .btnFire(KEY[2]),
+  //   .btnStart(KEY[1]),
+  //   .x(x),
+  //   .y(y),
+  //   .wren(writeEn)
+  // );
+
+  // Hack Stuff     -------------------------------------------------
+  reg CLOCK_25, slow_clk;
+  // Generate a 25MHz clock from the on-board 50MHz clock
+  always @(posedge CLOCK_50)
+    CLOCK_25 <= ~CLOCK_25;
+  reg [31:0] slow_counter;
+  always @(posedge CLOCK_50)
+  begin
+    if (slow_counter == 50000) begin
+      slow_counter <= 0;
+      slow_clk <= ~slow_clk;
+    end else begin
+      slow_counter <= slow_counter + 1;
+    end
+  end
+
+  //The ship draw
+  wire [2:0] shipRGB;
+  reg [9:0] shipX;
+  always@(posedge slow_clk)
+    if(~KEY[1] && |shipX)
+      shipX <= shipX - 1;
+    else if(~KEY[0] && shipX<150)
+      shipX <= shipX + 1;
+  assign shipRGB = (x>shipX && x<shipX+10 && y>100 && y<110) ? 3'b111 : 0;
+
+  //Draw a bullet
+  // reg [8:0] bulletX, bulletY;
+  // reg fire, hit;
+  // wire [2:0] bulletRGB;
+  // always @(posedge slow_clk)
+  //   if(~btnFire && ~fire) begin
+  //     bulletX <= shipX+6;
+  //     fire <= 1;
+  //   end else if(fire && bulletY>0)
+  //     bulletY <= bulletY - 1;
+  //   else begin
+  //     fire <= 0;
+  //     bulletY <= 225;
+  //   end
+  // Don't need hit condition until next week!
+  //always@(posedge clk)
+    //if(bulletY>enemyY && bulletY < enemyY+25 && bulletX>enemyX && bulletX < enemyX+25)
+      //hit <= 1;
+    //else
+      //hit <= 0;
+  //assign bulletRGB = (fire && y>bulletY && y<bulletY+12 && x>bulletX && x<bulletX+1) ? 3'b111 : 0;
+
+  // x,y counters
+  wire [7:0] localX;
+  wire [6:0] localY;
+  wire line,frame;
+  assign line = (localX==159);
+  assign frame = (localY==119);
+  assign wren = ((localY>9 && localY<129) && (localX>36 && localX<196));
+  assign colour = (wren) ? shipRGB|bulletRGB : 0;
+  assign wren = ((localY>9 && localY<129) && (localX>36 && localX<196));
+  assign x = wren?x-36:0;
+  assign y = wren?y-9:0;
+
+  always @(posedge CLOCK_25)
+    if(line)
+      localX <= 0;
+    else
+      localX <= localX + 1;
+
+  always @(posedge CLOCK_25)
+    if(frame)
+      localY <= 0;
+    else
+      localY <= localY + 1;
+
+  // ----------------------------------------------------------------
+
 endmodule
 
 module space_invader(clk,resetn,btnL,btnR,btnFire,btnStart,x,y,colour,wren);
@@ -112,79 +187,7 @@ module space_invader(clk,resetn,btnL,btnR,btnFire,btnStart,x,y,colour,wren);
   //wire [8:0] projectileXpos;
   //wire [7:0] projectileYpos;
 
-  // Generate a 25MHz clock from the on-board 50MHz clock
-  always@(posedge clk)
-  begin
-    if (!resetn) begin
-      clk_25 <= 0;
-    end else begin
-      clk_25 <= ~clk;
-    end
-  end
 
-  // Hack Stuff     -------------------------------------------------
-  reg slow_clk;
-
-  reg [31:0] slow_counter;
-  always @(posedge clk)
-    if (slow_counter == 50000) begin
-      slow_counter <= 0;
-      slow_clk <= ~slow_clk;
-    end else
-      slow_counter <= slow_counter + 1;
-
-  //The ship draw
-  wire [2:0] shipRGB;
-  reg [8:0] shipX;
-  always@(posedge slow_clk)
-    if(~btnL && |shipX)
-      shipX <= shipX - 1;
-    else if(~btnR && shipX<307)
-      shipX <= shipX + 1;
-  assign shipRGB = (x>shipX && x<shipX+12 && y>225 && y<230) ? 3'b111 : 0;
-
-  //Draw a bullet
-  reg [8:0] bulletX, bulletY;
-  reg fire, hit;
-  wire [2:0] bulletRGB;
-  always @(posedge slow_clk)
-    if(~btnFire && ~fire) begin
-      bulletX <= shipX+6;
-      fire <= 1;
-    end else if(fire && bulletY>0)
-      bulletY <= bulletY - 1;
-    else begin
-      fire <= 0;
-      bulletY <= 225;
-    end
-  // Don't need hit condition until next week!
-  //always@(posedge clk)
-    //if(bulletY>enemyY && bulletY < enemyY+25 && bulletX>enemyX && bulletX < enemyX+25)
-      //hit <= 1;
-    //else
-      //hit <= 0;
-  assign bulletRGB = (fire && y>bulletY && y<bulletY+12 && x>bulletX && x<bulletX+1) ? 3'b111 : 0;
-
-  // x,y counters
-  wire line,frame;
-  assign line = (x==319);
-  assign frame = (y==239);
-  assign wren = ((y>17 && y<257) && (x>71 && x<391));
-  assign colour = (wren) ? shipRGB|bulletRGB : 0;
-
-  always @(posedge clk_25)
-    if(line)
-      x <= 0;
-    else
-      x <= x + 1;
-
-  always @(posedge clk_25)
-    if(frame)
-      y <= 0;
-    else
-      y <= y + 1;
-
-  // ----------------------------------------------------------------
 
 
 //  player PLAYER(
