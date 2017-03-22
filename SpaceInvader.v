@@ -1,84 +1,84 @@
 // This is the top layer of the game
 // FPGA device: Cyclone5 series
-module fpga_top(
-	CLOCK_50,						//	On Board 50 MHz
-	// Your inputs and outputs here
-  KEY,
-  SW,
-	// The ports below are for the VGA output.  Do not change.
-	VGA_CLK,   						//	VGA Clock
-	VGA_HS,							//	VGA H_SYNC
-	VGA_VS,							//	VGA V_SYNC
-	VGA_BLANK_N,						//	VGA BLANK
-	VGA_SYNC_N,						//	VGA SYNC
-	VGA_R,   						//	VGA Red[9:0]
-	VGA_G,	 						//	VGA Green[9:0]
-	VGA_B   						//	VGA Blue[9:0]
-	);
+module SpaceInvader(
+  CLOCK_50,           //  On Board 50 MHz
+  // Your inputs and outputs here
+   KEY,
+   SW,
+  // The ports below are for the VGA output.  Do not change.
+  VGA_CLK,              //  VGA Clock
+  VGA_HS,             //  VGA H_SYNC
+  VGA_VS,             //  VGA V_SYNC
+  VGA_BLANK_N,            //  VGA BLANK
+  VGA_SYNC_N,           //  VGA SYNC
+  VGA_R,              //  VGA Red[9:0]
+  VGA_G,              //  VGA Green[9:0]
+  VGA_B               //  VGA Blue[9:0]
+  );
 
-	input		CLOCK_50;				//	50 MHz
-	input   [9:0]   SW;
-	input   [4:0]   KEY;
+  input   CLOCK_50;       //  50 MHz
+  input   [9:0]   SW;
+  input   [4:0]   KEY;
 
-	// Declare your inputs and outputs here
-	// Do not change the following outputs
-	output		VGA_CLK;   				//	VGA Clock
-	output		VGA_HS;					//	VGA H_SYNC
-	output		VGA_VS;					//	VGA V_SYNC
-	output		VGA_BLANK_N;				//	VGA BLANK
-	output		VGA_SYNC_N;				//	VGA SYNC
-	output	[9:0]	VGA_R;   				//	VGA Red[9:0]
-	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
-	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
+  // Declare your inputs and outputs here
+  // Do not change the following outputs
+  output    VGA_CLK;          //  VGA Clock
+  output    VGA_HS;         //  VGA H_SYNC
+  output    VGA_VS;         //  VGA V_SYNC
+  output    VGA_BLANK_N;        //  VGA BLANK
+  output    VGA_SYNC_N;       //  VGA SYNC
+  output  [9:0] VGA_R;          //  VGA Red[9:0]
+  output  [9:0] VGA_G;          //  VGA Green[9:0]
+  output  [9:0] VGA_B;          //  VGA Blue[9:0]
 
-	wire resetn;
-	assign resetn = KEY[0];
+  wire resetn;
+  assign resetn = KEY[0];
 
-	// Create the colour, x, y and writeEn wires that are inputs to the controller.
-	wire [2:0] colour;
-	wire [8:0] x;
-	wire [7:0] y;
-	wire writeEn;
+  // Create the colour, x, y and writeEn wires that are inputs to the controller.
+  wire [2:0] colour;
+  wire [8:0] x;
+  wire [7:0] y;
+  wire writeEn;
 
-	// Create an Instance of a VGA controller - there can be only one!
-	// Define the number of colours as well as the initial background
-	// image file (.MIF) for the controller.
-	vga_adapter VGA(
-		.resetn(resetn),
-		.clock(CLOCK_50),
-		.colour(colour),
-		.x(x),
-		.y(y),
-		.plot(writeEn),
-		/* Signals for the DAC to drive the monitor. */
-		.VGA_R(VGA_R),
-		.VGA_G(VGA_G),
-		.VGA_B(VGA_B),
-		.VGA_HS(VGA_HS),
-		.VGA_VS(VGA_VS),
-		.VGA_BLANK(VGA_BLANK_N),
-		.VGA_SYNC(VGA_SYNC_N),
-		.VGA_CLK(VGA_CLK));
+  // Create an Instance of a VGA controller - there can be only one!
+  // Define the number of colours as well as the initial background
+  // image file (.MIF) for the controller.
+  vga_adapter VGA(
+    .resetn(resetn),
+    .clock(CLOCK_50),
+    .colour(colour),
+    .x(x),
+    .y(y),
+    .plot(writeEn),
+    /* Signals for the DAC to drive the monitor. */
+    .VGA_R(VGA_R),
+    .VGA_G(VGA_G),
+    .VGA_B(VGA_B),
+    .VGA_HS(VGA_HS),
+    .VGA_VS(VGA_VS),
+    .VGA_BLANK(VGA_BLANK_N),
+    .VGA_SYNC(VGA_SYNC_N),
+    .VGA_CLK(VGA_CLK));
 
-	defparam VGA.RESOLUTION = "320x240";
-	defparam VGA.MONOCHROME = "FALSE";
-	defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
-	defparam VGA.BACKGROUND_IMAGE = "black.mif";
+  defparam VGA.RESOLUTION = "320x240";
+  defparam VGA.MONOCHROME = "FALSE";
+  defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
+  defparam VGA.BACKGROUND_IMAGE = "black.mif";
 
-	// Put your code here. Your code should produce signals x,y,colour and writeEn/plot
-	// for the VGA controller, in addition to any other functionality your design may require.
+  // Put your code here. Your code should produce signals x,y,colour and writeEn/plot
+  // for the VGA controller, in addition to any other functionality your design may require.
 
-	space_invader SI(
-	  .clk(CLOCK_50),
-	  .resetn(KEY[0]),
-	  .btnL(KEY[4]),
-	  .btnR(KEY[3]),
-	  .btnFire(KEY[2]),
-	  .btnStart(KEY[1]),
-	  .x(x),
-	  .y(y),
-	  .wren(writeEn)
-	);
+  space_invader SI(
+    .clk(CLOCK_50),
+    .resetn(KEY[0]),
+    .btnL(KEY[4]),
+    .btnR(KEY[3]),
+    .btnFire(KEY[2]),
+    .btnStart(KEY[1]),
+    .x(x),
+    .y(y),
+    .wren(writeEn)
+  );
 endmodule
 
 module space_invader(clk,resetn,btnL,btnR,btnFire,btnStart,x,y,colour,wren);
@@ -92,33 +92,35 @@ module space_invader(clk,resetn,btnL,btnR,btnFire,btnStart,x,y,colour,wren);
 
   // General wires
 
-  wire pulseL,pulseR,truePulseL,truePulseR;
-  wire cleanL,cleanR;
+  //wire pulseL,pulseR,truePulseL,truePulseR;
+  //wire cleanL,cleanR;
 
-  wire [8:0] playerXpos;
-  wire [7:0] playerYpos;
-  reg border, player_border
-  reg [4:0] player_addr; // Mem address corresponds to a X,Y pair
-  wire [3:0] player_din; // Mem data stores the RGB color for the pixel
-  wire [3:0] player_dout;
-  reg CLK_25;
-  wire R,G,B;
+  //wire [8:0] playerXpos;
+  //wire [7:0] playerYpos;
+  //reg border, player_border;
+  //reg [4:0] player_addr; // Mem address corresponds to a X,Y pair
+  //wire [3:0] player_din; // Mem data stores the RGB color for the pixel
+  //wire [3:0] player_dout;
+  reg clk_25;
+  //wire R,G,B;
 
-  ram32x4 MEMPLAYER(player_addr,CLK_25,player_din,wren,player_dout);
+  //ram32x4 MEMPLAYER(player_addr,clk_25,player_din,wren,player_dout);
 
-  reg [8:0] player_addr;
-  wire [8:0] player_addr_wire;
-  wire [7:0] player_data_wire;
-	wire btnShoot_wire;
-// Projectile wires
-  wire [8:0] projectileXpos;
-  wire [7:0] projectileYpos;
+
+  //wire btnShoot_wire;
+  // Projectile wires
+  //wire [8:0] projectileXpos;
+  //wire [7:0] projectileYpos;
 
   // Generate a 25MHz clock from the on-board 50MHz clock
-  clk_25 CLOCK_25(
-    .clk(clk),
-    .resetn(resetn),
-    .clk_25(CLK_25));
+  always@(posedge clk)
+  begin
+    if (!resetn) begin
+      clk_25 <= 0;
+    end else begin
+      clk_25 <= ~clk;
+    end
+  end
 
   // Hack Stuff     -------------------------------------------------
   reg slow_clk;
@@ -185,36 +187,36 @@ module space_invader(clk,resetn,btnL,btnR,btnFire,btnStart,x,y,colour,wren);
   // ----------------------------------------------------------------
 
 
-  player PLAYER(
-    .clk(CLK_25),
-    .resetn(resetn),
-	  .btnShoot(btnFire),
+//  player PLAYER(
+//    .clk(CLK_25),
+//    .resetn(resetn),
+//    .btnShoot(btnFire),
+//
+//    .btnLeft(pulseL),
+//    .btnRight(pulseR),
+//    .playerXpos(playerXpos),
+//    .playerYpos(playerYpos),
+//  .shoot(btnShoot_wire)
+//);
 
-    .btnLeft(pulseL),
-    .btnRight(pulseR),
-    .playerXpos(playerXpos),
-    .playerYpos(playerYpos),
-	.shoot(btnShoot_wire)
-);
+//  projectile p0(
+//
+//    .startXpos(playerXpos),
+//    .startYpos(playerYpos),
+//    .shoot(btnShoot_wire),
+//    .clk(CLK_25),
+//    .resetn(resetn),
+//    .direction(1'b0),
+//
+//    .projectileXpos(projectileXpos),
+//    .projectileYpos(projectileYpos)
+//  );
 
-	projectile p0(
-
-		.startXpos(playerXpos),
-		.startYpos(playerYpos),
-		.shoot(btnShoot_wire),
-		.clk(CLK_25),
-		.resetn(resetn),
-		.direction(1'b0),
-
-		.projectileXpos(projectileXpos),
-		.projectileYpos(projectileYpos)
-	);
-
-  motion_debounce MDL(clk,resetn,btnL,cleanL);
-  motion_debounce MDR(clk,resetn,btnR,cleanR);
-
-  motion_pulse MPL(clk,resetn,cleanL,pulseL);
-  motion_pulse MPR(clk,resetn,cleanR,pulseR);
+//  motion_debounce MDL(clk,resetn,btnL,cleanL);
+//  motion_debounce MDR(clk,resetn,btnR,cleanR);
+//
+//  motion_pulse MPL(clk,resetn,cleanL,pulseL);
+//  motion_pulse MPR(clk,resetn,cleanR,pulseR);
 
   // blk_mem_gen_0 MEMPLAYER(CLK_25,1,0,player_addr_wire,0,player_data_wire);
 
@@ -227,76 +229,77 @@ module space_invader(clk,resetn,btnL,btnR,btnFire,btnStart,x,y,colour,wren);
   //assign totalgameover = (gameover) || (livesgameover);
 
   // RGB OUTPUT
-  always @(posedge clk)
-  begin
-    colour[2] <= R;
-    colour[1] <= G;
-    colour[0] <= B;
-  end
+//  always @(posedge clk)
+//  begin
+//    colour[2] <= R;
+//    colour[1] <= G;
+//    colour[0] <= B;
+//  end
 
   // Update colour channels with memory data based on game logics
-  always@(posedge clk)
-  begin
-    R <=  (player_border)   ? player_dout[2] : 0;
-    G <=  (player_border)   ? player_dout[1] :
-          (border)       ? 1 : 0;
-    B <=  (player_border)   ? player_dout[0] ; 0;
-  end else begin
-    R <= 0;
-    B <= 0;
-    G <= 0;
-  end
+//  always@(posedge clk)
+//  begin
+//    R <=  (player_border)   ? player_dout[2] : 0;
+//    G <=  (player_border)   ? player_dout[1] :
+//          (border)       ? 1 : 0;
+//    B <=  (player_border)   ? player_dout[0] : 0;
+//  end else begin
+//    R <= 0;
+//    B <= 0;
+//    G <= 0;
+//  end
 
   // Update game logics at the 25MHz pulse
-  always @(posedge CLK_25)
-  begin
-    if(!resetn) begin
-      player_addr <= 0;
-    end else begin
-      player_addr <= ( == playerYpos) ? 0 : ((player_border)? (player_addr +  1'b1) : (player_addr));
-    end
-  end
+//  always @(posedge CLK_25)
+//  begin
+//    if(!resetn) begin
+//      player_addr <= 0;
+//    end else begin
+//      player_addr <= ( == playerYpos) ? 0 : ((player_border)? (player_addr +  1'b1) : (player_addr));
+//    end
+//  end
 
 endmodule
 
-module projectile(projectileXpos, projectileYpos, startXpos, startYpos, shoot, clk, resetn, direction);
-	input clk, resetn;
-	input [8:0] startXpos;
-	input [7:0] startYpos;
-	input shoot, direction; //direction 0 = up, 1 = down
+module projectile(projectileXpos, projectileYpos, startXpos, colour, startYpos, shoot, clk, resetn, direction);
+  input clk, resetn;
+  input [8:0] startXpos;
+  input [7:0] startYpos;
+  input shoot, direction; //direction 0 = up, 1 = down
 
-	output reg [8:0] projectileXpos; // the current X position of the projectile
-	output reg [7:0] projectileYpos; // the current Y position of the projectile
-	output reg [2:0] colour;
+  output reg [8:0] projectileXpos; // the current X position of the projectile
+  output reg [7:0] projectileYpos; // the current Y position of the projectile
+  output reg [2:0] colour;
 
-	always @(posedge clk) begin
+  reg shot;
 
-		if (!resetn) begin //active low reset, on reset assign the shot value to not be high
-			shot <= 1'b0;	//we set this to low to indicate that the projectile isnt in motion.
-			colour <= 3'b0; // set projectile colour to black so it blends with
-		end
-		else begin
-			if (shoot) begin
-				shot <= 1'b1; // indicate that the projectile should be in motion (incrementing the Y position)
-				projectileXpos <= startXpos; // assign the starting X position of the projectile to be the X position of the entity that shot it at that moment
-				projectileYpos <= startYpos; // assign the starting Y position of the projectile to be the Y position of the entity that shot it at that moment
-				colour <= 3'b111; //set the projectile colour to white so it stands out from the background (is visible)
-			end
-			if (shot) begin
-				if(direction) // check direction, not necessary for milestone one but added for future ease
-					projectileYpos <= projectileYpos + 1;	//projectile going down
-				else
-					projectileYpos <= projectileYpos - 1;	// projectile going up
-				if ((projectileYpos == 0) || (projectileYpos == 240))	//if the rocket reaches the end of the screen (top or bottom), dont have to worry about collision of enemies until later
-					//TODO
-					shot <= 1'b0;	//indicate that the bullet is no longer traveling across the screen, so stop incrementing the Yposition (indirectly does this by not entering the if shot 									statement
-			end
+  always @(posedge clk) begin
 
-		end
+    if (!resetn) begin //active low reset, on reset assign the shot value to not be high
+      shot <= 1'b0; //we set this to low to indicate that the projectile isnt in motion.
+      colour <= 3'b0; // set projectile colour to black so it blends with
+    end
+    else begin
+      if (shoot) begin
+        shot <= 1'b1; // indicate that the projectile should be in motion (incrementing the Y position)
+        projectileXpos <= startXpos; // assign the starting X position of the projectile to be the X position of the entity that shot it at that moment
+        projectileYpos <= startYpos; // assign the starting Y position of the projectile to be the Y position of the entity that shot it at that moment
+        colour <= 3'b111; //set the projectile colour to white so it stands out from the background (is visible)
+      end
+      if (shot) begin
+        if(direction) // check direction, not necessary for milestone one but added for future ease
+          projectileYpos <= projectileYpos + 1; //projectile going down
+        else
+          projectileYpos <= projectileYpos - 1; // projectile going up
+        if ((projectileYpos == 0) || (projectileYpos == 240)) //if the rocket reaches the end of the screen (top or bottom), dont have to worry about collision of enemies until later
+          //TODO
+          shot <= 1'b0; //indicate that the bullet is no longer traveling across the screen, so stop incrementing the Yposition (indirectly does this by not entering the if shot                   statement
+      end
+
+    end
 
 
-	end
-
+  end
 endmodule
 
 module player(playerXpos,playerYpos, shoot, clk,resetn,btnLeft,btnRight, btnShoot);
@@ -315,24 +318,24 @@ module player(playerXpos,playerYpos, shoot, clk,resetn,btnLeft,btnRight, btnShoo
     end
     else begin
       /*
-	Movement block of the Player, Detects corners and behaves accordingly
-	i.e. doesnt move model on edges if they are moving into the edge.
+  Movement block of the Player, Detects corners and behaves accordingly
+  i.e. doesnt move model on edges if they are moving into the edge.
       */
       if (btnLeft) begin // On button left press
-	if (playerXpos == 0) //Check if the Player model is hugging the left edge of the screen
-	  playerXpos <= playerXpos; // Stay there
-	if (playerXpos > 0) // Check if there is still space to move left.
-	  playerXpos <= playerXpos - 9'd1; // Move one pixel left
+  if (playerXpos == 0) //Check if the Player model is hugging the left edge of the screen
+    playerXpos <= playerXpos; // Stay there
+  if (playerXpos > 0) // Check if there is still space to move left.
+    playerXpos <= playerXpos - 9'd1; // Move one pixel left
       end
       else if (btnRight) begin // On button right press
-	if (playerXpos == 9'd305) //Check if the Player model is hugging the right edge of the screen (Adjusted for 15pixel wide model)
-	  playerXpos <= playerXpos; // Dont move
-	if (playerXpos < 0'd305) // Check if there is still space to move right.
-	  playerXpos <= playerXpos + 9'd1; // Move one pixel right
+  if (playerXpos == 9'd305) //Check if the Player model is hugging the right edge of the screen (Adjusted for 15pixel wide model)
+    playerXpos <= playerXpos; // Dont move
+  if (playerXpos < 9'd305) // Check if there is still space to move right.
+    playerXpos <= playerXpos + 9'd1; // Move one pixel right
       end
       if (btnShoot) begin
-	//TODO
-	shoot <= 1'b1; // signal that the projectile should be fired
+  //TODO
+  shoot <= 1'b1; // signal that the projectile should be fired
       end
     end
   end
@@ -344,6 +347,8 @@ module alien(clk,resetn,initX,initY,alienX,alienY,isAlive,gamestart,gameover);
   input gamestart,gameover;
   input [8:0] initX;
   input [7:0] initY;
+  input isAlive;
+
   output reg [8:0] alienX;
   output reg [7:0] alienY;
 
@@ -360,13 +365,13 @@ module alien(clk,resetn,initX,initY,alienX,alienY,isAlive,gamestart,gameover);
       speed <= 1'b1;
     end else begin
       if (direction) begin
-	counter <= counter + 1'b1;
-	alienX <= gamestart ? (alienX + speed) : alienX;
-	speed <= 0;
+  counter <= counter + 1'b1;
+  alienX <= gamestart ? (alienX + speed) : alienX;
+  speed <= 0;
       end else begin
-	counter <= counter + 1'b1;
-	alienX <= gamestart ? (alienX - speed) : alienX;
-	speed <= 0;
+  counter <= counter + 1'b1;
+  alienX <= gamestart ? (alienX - speed) : alienX;
+  speed <= 0;
       end
     end
   end
@@ -378,13 +383,14 @@ module alien(clk,resetn,initX,initY,alienX,alienY,isAlive,gamestart,gameover);
       direction <= 0;
     end else begin
       if ((alienX == initX - 85) && (direction == 0)) begin
-	direction <= 1'b1;
-	alienY <= gameover ? alienY : (alienY + 10);
+  direction <= 1'b1;
+  alienY <= gameover ? alienY : (alienY + 10);
       end else if ((alienX == initX + 25) && (direction == 1)) begin
-	direction <= 0;
-	alienY <= gameover ? alienY : (alienY + 10);
+  direction <= 0;
+  alienY <= gameover ? alienY : (alienY + 10);
       end
     end
+  end
 
 endmodule
 
@@ -404,16 +410,16 @@ module motion_debounce(clk,resetn,noisy,clean);
       temp <= 1'b0;
     end else begin
       if (noisy) begin
-	if (counter == edge_delay) begin
-	  clean <= temp;
-	end else begin
-	  temp <= noisy;
-	  clean <= clean;
-	  counter <= counter + 1'b1;
-	end
+  if (counter == edge_delay) begin
+    clean <= temp;
+  end else begin
+    temp <= noisy;
+    clean <= clean;
+    counter <= counter + 1'b1;
+  end
       end else begin
-	counter <= 20'b0;
-	clean <= 1'b0;
+  counter <= 20'b0;
+  clean <= 1'b0;
       end
     end
   end
@@ -435,32 +441,32 @@ module motion_pulse(clk,resetn,level,pulse);
   begin
     case(current_state)
       S0:begin
-	pulse <= 1'b0;
-	counter <= 0;
-	if(level) begin
-	  next_state <= S1;
-	end else begin
-	  next_state <= S0;
-	end
+  pulse <= 1'b0;
+  counter <= 0;
+  if(level) begin
+    next_state <= S1;
+  end else begin
+    next_state <= S0;
+  end
       end
 
       S1:begin
-	if (counter == 24'd400_000) begin
-	  pulse <= 1'b1;
+  if (counter == 24'd400_000) begin
+    pulse <= 1'b1;
           counter <= 0;
         end else begin
           pulse <= 0;
           counter <= counter + 1'b1;
         end
 
-	if (level) begin
-	  next_state <= S1;
-	end else begin
-	  next_state <= S0;
-	end
+  if (level) begin
+    next_state <= S1;
+  end else begin
+    next_state <= S0;
+  end
       end
 
-      default: nextstate <= S0;
+      default: next_state <= S0;
     endcase
   end
 
@@ -474,39 +480,24 @@ module motion_pulse(clk,resetn,level,pulse);
   end
 endmodule
 
-// Rate dividers
-module clock_25(clk,resetn,clk_25);
-  input clk,resetn;
-  output reg clk_25;
-
-  always@(posedge clk)
-  begin
-    if (!resetn) begin
-      clk_25 <= 0;
-    end else begin
-      clk_25 <= ~clk;
-    end
-  end
-endmodule
-
-module frame_pulse(clk_25,resetn,plot);
-  input clk_25,resetn;
-  output reg plot;
-
-  reg [18:0] counter;
-
-  always@(posedge clk_25)
-  begin
-    if (!resetn) begin
-      plot <= 0;
-    end else begin
-      if (counter == 19'd400_000) begin
-	  plot <= 1'b1;
-          counter <= 0;
-        end else begin
-          plot <= 0;
-          counter <= counter + 1'b1;
-        end
-    end
-  end
-endmodule
+//module frame_pulse(clk_25,resetn,plot);
+//  input clk_25,resetn;
+//  output reg plot;
+//
+//  reg [18:0] counter;
+//
+//  always@(posedge clk_25)
+//  begin
+//    if (!resetn) begin
+//      plot <= 0;
+//    end else begin
+//      if (counter == 19'd400_000) begin
+//    plot <= 1'b1;
+//          counter <= 0;
+//        end else begin
+//          plot <= 0;
+//          counter <= counter + 1'b1;
+//        end
+//    end
+//  end
+//endmodule
