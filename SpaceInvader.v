@@ -36,8 +36,8 @@ module SpaceInvader(
 
   // Create the colour, x, y and writeEn wires that are inputs to the controller.
   wire [2:0] colour;
-  wire [7:0] x;
-  wire [6:0] y;
+  reg [7:0] x;
+  reg [6:0] y;
   wire writeEn;
 
   // Create an Instance of a VGA controller - there can be only one!
@@ -68,18 +68,6 @@ module SpaceInvader(
   // Put your code here. Your code should produce signals x,y,colour and writeEn/plot
   // for the VGA controller, in addition to any other functionality your design may require.
 
-  // space_invader SI(
-  //   .clk(CLOCK_50),
-  //   .resetn(KEY[0]),
-  //   .btnL(KEY[4]),
-  //   .btnR(KEY[3]),
-  //   .btnFire(KEY[2]),
-  //   .btnStart(KEY[1]),
-  //   .x(x),
-  //   .y(y),
-  //   .wren(writeEn)
-  // );
-
   // Hack Stuff     -------------------------------------------------
   reg CLOCK_25, slow_clk;
   // Generate a 25MHz clock from the on-board 50MHz clock
@@ -98,7 +86,7 @@ module SpaceInvader(
 
   //The ship draw
   wire [2:0] shipRGB;
-  reg [9:0] shipX;
+  reg [7:0] shipX;
   always@(posedge slow_clk)
     if(~KEY[1] && |shipX)
       shipX <= shipX - 1;
@@ -129,13 +117,12 @@ module SpaceInvader(
   //assign bulletRGB = (fire && y>bulletY && y<bulletY+12 && x>bulletX && x<bulletX+1) ? 3'b111 : 0;
 
   // x,y counters
-  wire [7:0] localX;
-  wire [6:0] localY;
+  reg [7:0] localX;
+  reg [6:0] localY;
   wire line,frame;
   assign line = (localX==159);
   assign frame = (localY==119);
-  assign wren = ((localY>9 && localY<129) && (localX>36 && localX<196));
-  assign colour = (wren) ? shipRGB|bulletRGB : 0;
+  assign colour = (wren) ? shipRGB : 0;
   assign wren = ((localY>9 && localY<129) && (localX>36 && localX<196));
   assign x = wren?x-36:0;
   assign y = wren?y-9:0;
