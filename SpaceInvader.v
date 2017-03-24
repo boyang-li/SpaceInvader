@@ -86,7 +86,7 @@ module SpaceInvader(
   always @(posedge CLOCK_50)
     CLOCK_25 <= ~CLOCK_25;
   reg [31:0] slow_counter;
-  always @(posedge CLOCK_50)
+  always @(posedge CLOCK_50) // 1000Hz
   begin
     if (slow_counter == 50000) begin
       slow_counter <= 0;
@@ -128,17 +128,17 @@ module SpaceInvader(
       //hit <= 0;
   //assign bulletRGB = (fire && y>bulletY && y<bulletY+12 && x>bulletX && x<bulletX+1) ? 3'b111 : 0;
 
-  // x,y counters
+  // x,y counters traverse all pixels line by line @25MHz
   wire [7:0] localX;
   wire [6:0] localY;
   wire line,frame;
   assign line = (localX==159);
   assign frame = (localY==119);
   assign wren = ((localY>9 && localY<129) && (localX>36 && localX<196));
-  assign colour = (wren) ? shipRGB|bulletRGB : 0;
+  assign colour = (wren) ? shipRGB : 0;
   assign wren = ((localY>9 && localY<129) && (localX>36 && localX<196));
-  assign x = wren?x-36:0;
-  assign y = wren?y-9:0;
+  assign x = (wren) ? (localX - 36) : 0;
+  assign y = (wren) ? (localY - 9) : 0;
 
   always @(posedge CLOCK_25)
     if(line)
