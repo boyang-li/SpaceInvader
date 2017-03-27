@@ -1,4 +1,4 @@
-// Box animation
+// 4x4 Box animation
 module part3
 	(
 		CLOCK_50,						//	On Board 50 MHz
@@ -30,10 +30,7 @@ module part3
 	output	[9:0]	VGA_R;   				//	VGA Red[9:0]
 	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
 	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
-	
-	wire resetn;
-	assign resetn = KEY[0];
-	
+
 	// Create the colour, x, y and writeEn wires that are inputs to the controller.
 	wire [2:0] colour;
 	wire [7:0] x;
@@ -63,303 +60,332 @@ module part3
 		defparam VGA.MONOCHROME = "FALSE";
 		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
 		defparam VGA.BACKGROUND_IMAGE = "black.mif";
-			
+
 	// Put your code here. Your code should produce signals x,y,colour and writeEn/plot
 	// for the VGA controller, in addition to any other functionality your design may require.
-    wire  ld_plot_wire, ld_erase_wire , ld_counter_reset_wire, ld_clk_pix_wire, ld_reset_wire, out_pix_wire;
-    // Instansiate datapath
-	datapath d0(
+
+  wire CLOCK_25;
+  // Generate 25 MHz for duty clock
+  always @(posedge CLOCK_50) begin
+    if (!resetn) begin
+      // reset
+      CLOCK_25 <= 0;
+    end else begin
+      CLOCK_25 <= ~CLOCK_25;
+    end
+  end
+
+  wire resetn,go;
+  wire draw_finish,erase_finish,next_move;
+  wire delay_cnt_rst;
+  wire active,draw_en,erase_en,update_xy;
+  wire draw_finish,erase_finish,next_move;
+  assign resetn = KEY[0];
+  assign go = ~KEY[1];
+
+  // Instansiate control
+  control c0(
+    //Input
+    .clk(CLOCK_50),
+    .clk25(CLOCK_25),
+    .resetn(resetn),
+    .go(go),
+    .draw_finish(draw_finish),
+    .erase_finish(erase_finish),
+    .next_move(next_move),
+    //Output
+    .delay_cnt_rst(delay_cnt_rst),
+    .active(active),
+    .draw_en(draw_en),
+    .erase_en(erase_en),
+    .update_xy(update_xy)
+  );
+
+  // Instansiate datapath
+  datapath d0(
 	  //Input
-	  .data_in(SW[6:0]),
+    .clk(CLOCK_50),
+    .resetn(resetn),
 	  .colour_in(SW[9:7]),
-	  .resetn(KEY[0]),
-	  .ld_plot(ld_plot_wire),
-	  .ld_erase(ld_erase_wire),
-	  .ld_counter_reset(ld_counter_reset_wire),
-	  .ld_clk_pix(ld_clk_pix_wire),
-	  .ld_reset(ld_reset_wire),
-	  
+	  .delay_cnt_rst(delay_cnt_rst),
+	  .active(active),
+	  .draw_en(draw_en),
+    .erase_en(erase_en),
+    .update_xy(update_xy),
+    .x_in(x),
+    .y_in(y),
 	  //Output
-	  .out_pix(out_pix_wire),
-	  .colour(colour),
-	  .X(x),
-	  .Y(y)
+    .draw_finish(draw_finish),
+    .erase_finish(erase_finish),
+    .next_move(next_move),
+	  .x_out(x),
+	  .y_out(y),
+    .colour_out(colour),
+    .wren(writeEn)
 	);
-   
-    // Instansiate FSM control
-      control c0(
-	//Input
-	.clk(CLOCK_50),
-	.resetn(KEY[0]),
-	.frames(out_pix_wire),
-	//.go(KEY[1]),
-	//.load(KEY[3]),
-	
-	//Output
-	.ld_plot(ld_plot_wire),
-	.ld_erase(ld_erase_wire),
-	.ld_counter_reset(ld_counter_reset_wire),
-	.ld_clk_pix(ld_clk_pix_wire),
-	.ld_reset(ld_reset_wire),
-	.wren(writeEn)
-      );
-    
-    
 endmodule
 
 // FSM
 module control(
-    input clk,
-    input resetn,
-    input frames,
+  input clk,clk25,resetn,go,
 
-    output reg  ld_plot, ld_erase, ld_counter_reset, ld_clk_pix, ld_reset, wren
-    );
+  input draw_finish,
+  input erase_finish,
+  input next_move,
 
-    reg [2:0] current_state, next_state; 
-    
-    localparam  S_RESET			= 3'd0,
-		S_PLOT      		= 3'd1,
-                S_COUNTER_RESET 	= 3'd2,
-                S_ERASE        		= 3'd3,
-                S_PLOT 			= 3'd4,
-                S_UPDATE_COUNTERS	= 3'd5;
-    
-    // Next state logic aka our state table
-    always@(*)
-    begin: state_table 
-            case (current_state)
-		S_RESET: next_state = S_PLOT;
-                S_PLOT: next_state = S_COUNTER_RESET; // Loop in current state until value is input
-                S_COUNTER_RESET: next_state = frames  ? S_ERASE: S_COUNTER_RESET; // Loop in current state until go signal goes low
-                S_ERASE: next_state = S_UPDATE_COUNTER;
-                S_UPDATE_COUNTERS: next_state = S_PLOT; // we will be done our two operations, start over after
-            default:     next_state = S_RESET;
-        endcase
-    end // state_table
-   
+  output reg delay_cnt_rst,
+  output reg active,draw_en,erase_en,update_xy
+  );
 
-    // Output logic aka all of our datapath control signals
-    always @(*)
-    begin: enable_signals
-        // By default make all our signals 0
-        ld_plot = 1'b0;
-        ld_clk_pix = 1'b0;
-	ld_erase = 1'b0;
-	ld_counter_reset = 1'b1;
-	ld_reset = 1'b0;
-	wren = 1'b0;
-        case (current_state)
-	    S_RESET: begin
-                ld_reset = 1'b1;
-                end
-	    S_COUNTER_RESET: begin
-	      ld_counter_reset = 1'b0;
-	    end
-	    S_ERASE: begin
-	      ld_erase = 1'b1;
-	    end
-            S_UPDATE_COUNTERS: begin // Do A <- A * X
-	      ld_clk_pix = 1'b1;
-	    end
-	    S_PLOT: begin // Do A <- A * X
-	      ld_plot = 1'b1;
-	      wren = 1'b1;
-	    end
-        // default:    // dold_resetn't need default since we already made sure all of our outputs were assigned a value at the start of the always block
-        endcase
-    end // enable_signals
-   
-    // current_state registers
-    always@(posedge clk)
-    begin
-        if(!resetn)
-            current_state <= S_RESET;
-        elseq
-            current_state <= next_state;
-    end 
+  reg [2:0] current_state, next_state;
+
+  localparam  S_RST_ALL	  = 3'd0,
+              S_IDLE      = 3'd1,
+	            S_DRAW_BOX  = 3'd2,
+              S_RST_DELAY = 3'd3,
+              S_WAIT_PLOT = 3'd4,
+              S_ERASE_BOX = 3'd5,
+              S_UPDATE_XY = 3'd6;
+
+  // Next state logic aka our state table
+  always @(posedge clk)
+  begin: state_table
+    case (current_state)
+      S_RST_ALL:   next_state <= S_IDLE;
+	    S_IDLE:      next_state <= (go) ? S_DRAW_BOX : S_IDLE;
+      S_DRAW_BOX:  next_state <= (draw_finish) ? S_RST_DELAY : S_DRAW_BOX;
+      S_RST_DELAY: next_state <= S_WAIT_PLOT;
+      S_WAIT_PLOT: next_state <= (next_move) ? S_ERASE_BOX : S_WAIT_PLOT;
+      S_ERASE_BOX: next_state <= (erase_finish) ? S_UPDATE_XY : S_ERASE_BOX;
+      S_UPDATE_XY: next_state <= S_DRAW_BOX;
+      default:     next_state <= S_RST_ALL;
+    endcase
+  end // state_table
+
+  // current_state registers
+  always @(posedge clk)
+  begin: set_states
+    if (!resetn) begin
+      active <= 1'b0;
+      current_state <= S_RST_ALL;
+    end else begin
+      if (go) begin
+        active <= 1'b1;
+      end
+      current_state <= next_state;
+    end
+  end
+
+  // Output logic aka all of our datapath control signals
+  always @(posedge clk)
+  begin: enable_signals
+    // By defaults...
+    delay_cnt_rst = 1'b0;
+    draw_en = 1'b0;
+    erase_en = 1'b0;
+    update_xy = 1'b0;
+
+    case (current_state)
+      S_RST_ALL: begin
+        delay_cnt_rst = 1'b1;
+      end
+      S_DRAW_BOX: begin
+        draw_en = 1'b1;
+      end
+      S_RST_DELAY_CNT: begin
+        delay_cnt_rst = 1'b1;
+      end
+      S_ERASE_BOX: begin
+        erase_en = 1'b1;
+      end
+      S_UPDATE_XY: begin
+        update_xy = 1'b1;
+      end
+      // default: // dold_resetn't need default since we already made sure all
+      // of our outputs were assigned a value at the start of the always block
+    endcase
+  end // enable_signals
 endmodule
 
 // Datapath
 module datapath(
-    input resetn,
-    input clk_50,
+    // Input
+    input clk,resetn,
     input [2:0] colour_in,
-    input [6:0] data_in,
-    input ld_plot, ld_erase, ld_counter_reset, ld_clk_pix, ld_reset,
-    
-    output reg [7:0] X,
-    output reg [6:0] Y,
-    output reg [2:0] colour
-    output reg out_pix;
+    input delay_cnt_rst,
+    input active,draw_en,erase_en,update_xy,
+    input [7:0] x_in,
+    input [6:0] y_in,
+    // Output
+    output reg draw_finish,erase_finish,next_move,
+    output reg [7:0] x_out,
+    output reg [6:0] y_out,
+    output reg [2:0] colour_out,
+    output reg wren
     );
-    reg left, up;
-    wire [7:0] X_pos_wire;
-    wire [6:0] Y_pos_wire;
-    wire clk_pix_wire, clk_60hz_wire;
- 
-    
-    // Registers a, b, c, x with respective input logic
-    always @ (clk_50) begin
-        if (!resetn) begin
-            X <= 8'b0;
-            Y <= 7'b0111100;
-            colour <= 3'b0;
-            left <= 1'b0;
-            up <= 1'b1;
+
+    reg x_offset,y_offset;
+
+    always @(posedge clk) begin
+      if (!resetn) begin
+        x_out <= 0;
+        y_out <= 7'd60;
+        // 0 = -1, 1 = 1, default: up-right
+        x_offset <= 1'b1;
+        y_offset <= 0;
+        colour <= 3'b000;
+        draw_finish <= 0;
+        erase_finish <= 0;
+        next_move <= 0;
+        wren <= 0;
+      end
+      else if (active) begin
+        if (draw_en) begin
+          wren <= 1'b1;
+          colour <= colour_data;
+          draw_finish <= delay_cnt_out;
+        end else if (erase_en) begin
+          wren <= 1'b1;
+          colour <= 3'b000;
+          erase_finish <= delay_cnt_out;
+        end else begin
+          wren <= 0;
         end
-        else begin
-            if (ld_erase)
-                colour <= 3'b0;
-	    end
-	    
-	    if (ld_plot)
-                colour <= colour_in;
-	    end
-	    
-	    if (ld_reset)
-                X <= 8'b0;
-		Y <= 7'b0111100;
-		left <= 1'b0;
-		up <= 1'b1;
-	    end
-	    
+
+        if ((x_out == 0) && (!x_offset)) begin
+          x_offset <= ~x_offset;
+        end
+        else if ((x_out == 159) && (x_offset)) begin
+          x_offset <= ~x_offset;
+        end
+
+        if ((y_out == 0) && (!y_offset)) begin
+          y_offset <= ~y_offset;
+        end
+        else if ((y_out == 119) && (y_offset)) begin
+          y_offset <= ~y_offset;
+        end
+
+        if (update_xy) begin
+          x_out <= next_x;
+          y_out <= next_y;
+        end
+      end
     end
-    
-    XCounter x0(
-      .clk_pix(ld_clk_pix),
-      .cur_x_pos(X),
-      .left(left),
-      
-      .out_x_pos(X_pos_wire),
-      .out_left(left)
+
+    wire [7:0] next_x;
+    wire [6:0] next_y;
+    wire delay_cnt_out;
+    XCounter xc0(
+      .clk(clk),
+      .en(active),
+      .x(x_out),
+      .offset(x_offset),
+      .x_out(next_x)
     );
-    
-    YCounter y0(
-      .clk_pix(ld_clk_pix),
-      .cur_y_pos(Y),
-      .up(up),
-      
-      .out_y_pos(Y_pos_wire),
-      .out_up(up)
+    YCounter yc0(
+      .clk(clk),
+      .en(active),
+      .y(y_out),
+      .offset(y_offset),
+      .y_out(next_y)
     );
-    
-    DelayCounter d0(
-      .clk_50(clk_50), 
-      .resetn(ld_counter_reset), 
-      .out_60hz(clk_60hz_wire)
+    DelayCounter dc0(
+      .clk_50mhz(clk),
+      .rst(delay_cnt_rst),
+      .en(active),
+      .delay_cnt_out(delay_cnt_out)
     );
-    FrameCounter f0(
-      .clk_60hz(clk_60hz), 
-      .resetn(ld_counter_reset), 
-      .out_pix(out_pix)
+    FrameCounter fc0(
+      .clk_60hz(delay_cnt_out),
+      .rst(delay_cnt_rst), // Using the same signal as dc0
+      .en(active), // Using the same signal as dc0
+      .frame_cnt_out(next_move)
     );
 endmodule
 
-// XCounter takes start pos and horizontal direction,
-// and outputs the next x pos and direction for the next pixel-plot.
+// XCounter takes current X position & direction,
+// and then offset +1/-1 depending on the direction.
 module XCounter(
-  input clk_pix,
-  //input en, Not used
-  input [7:0] cur_x_pos,
-  input left,
-  
-  output reg [7:0] out_x_pos;
-  output reg out_left;
+  input clk,
+  input en,
+  input [7:0] x, // X position
+  input offset, // 0 = -1; 1 = 1
+
+  output reg [7:0] x_out
   );
-  
-  always @(posedge clk_pix) begin
-    if (!left) begin // x moving towards right
-      if (cur_x_pos < 160) begin // x has not reached right edge
-	out_left <= left; // keep direction
-	out_x_pos <= cur_x_pos + 1; // increment pos
-      end else begin // x has reached right edge
-	out_left = ~left; // flip direction
-	out_x_pos <= cur_x_pos - 1; // decrement pos
+
+  always @(posedge clk) begin
+    if (en) begin
+      if (offset) begin
+        x_out <= x + 1;
+      else begin
+        x_out <= x - 1;
       end
-    end else begin // x moving towards left
-      if (cur_x_pos > 0) begin // x has not reached left edge
-	out_left <= left; // keep direction
-	out_x_pos <= cur_x_pos - 1; // decrement pos
-      end else begin // x has reached left edge
-	out_left = ~left; // flip direction
-	out_x_pos <= cur_x_pos + 1; // increment pos
-      end
+    end else begin
+      x_out <= x;
     end
   end
 endmodule
 
-// YCounter takes start pos and vertical direction,
-// and outputs the next x pos and direction for the next pixel-plot.
+// YCounter takes current Y position & direction,
+// and then offset +1/-1 depending on the direction.
 module YCounter(
-  input clk_pix,
-  //input en, not used
-  input [6:0] cur_y_pos,
-  input up,
-  
-  output reg [6:0] out_y_pos;
-  output reg out_up;
+  input clk,
+  input en,
+  input [6:0] y, // y position
+  input offset, // 0 = -1; 1 = 1
+
+  output reg [6:0] y_out
   );
-  
-  always @(posedge clk_pix) begin
-    if (!up) begin // x moving down
-      if (cur_y_pos < 120) begin // x has not reached bottom edge
-	out_up <= up; // keep direction
-	out_y_pos <= cur_y_pos + 1; // increment pos
-      end else begin // x has reached bottom edge
-	out_up = ~up; // flip direction
-	out_y_pos <= cur_y_pos - 1; // decrement pos
+
+  always @(posedge clk) begin
+    if (en) begin
+      if (offset) begin
+        y_out <= y + 1;
+      else begin
+        y_out <= y - 1;
       end
-    end else begin // x moving up
-      if (cur_y_pos > 0) begin // x has not reached top edge
-	out_up <= up; // keep direction
-	out_y_pos <= cur_y_pos - 1; // decrement pos
-      end else begin // x has reached top edge
-	out_up = ~up; // flip direction
-	out_y_pos <= cur_y_pos + 1; // increment pos
-      end
+    end else begin
+      y_out <= y;
     end
   end
 endmodule
 
 // generate 60 Hz from 50 MHz
-module DelayCounter(clk_50, resetn, out_60hz);
-  input clk_50, resetn;
-  output reg out_60hz = 0;
+module DelayCounter(clk_50mhz,rst,en,delay_cnt_out);
+  input clk_50mhz,rst,en;
+  output reg delay_cnt_out = 0;
 
-  reg [19:0] count_reg = 0;
-
-  always @(posedge clk_50) begin
-    if (!resetn) begin
+  reg [18:0] count_reg = 0; // Range 0-524288
+  always @(posedge clk_50mhz or posedge rst) begin
+    if (rst) begin
       count_reg <= 0;
-      out_60hz <= 0;
+      delay_cnt_out <= 0;
     end else begin
       if (count_reg < 416666) begin
-	count_reg <= count_reg + 1;
+	      count_reg <= count_reg + 1;
       end else begin
-	count_reg <= 0;
-        out_60hz <= ~out_60hz;
+        count_reg <= 0;
+        delay_cnt_out <= (en) ? ~delay_cnt_out : 0;
       end
   end
 endmodule
 
-// generate 1 pulse (a single pixel-plot) every 15 frames
-module FrameCounter(clk_60hz, resetn, out_pix);
-  input clk_60hz, resetn;
-  output reg out_pix = 0;
+// generate 1 pulse for every 15 pulses
+module FrameCounter(clk_60hz,rst,en,frame_cnt_out);
+  input clk_60hz,rst,en;
+  output reg frame_cnt_out = 0;
 
-  reg [3:0] count_reg = 0;
-
-  always @(posedge clk_50) begin
-    if (!resetn) begin
+  reg [3:0] count_reg = 0; // Range 0-15
+  always @(posedge clk_60hz or posedge rst) begin
+    if (rst) begin
       count_reg <= 0;
-      out_pix <= 0;
+      frame_cnt_out <= 0;
     end else begin
-      if (count_reg < 15) begin
-	count_reg <= count_reg + 1;
-      end else begin
-	count_reg <= 0;
-        out_pix <= ~out_pix;
+      if (en) begin
+        count_reg <= (count_reg == 14) ? 0 : (count_reg + 1);
+        frame_cnt_out <= (count_reg > 7);
       end
   end
 endmodule
