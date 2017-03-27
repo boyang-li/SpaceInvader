@@ -64,22 +64,21 @@ module part3
 	// Put your code here. Your code should produce signals x,y,colour and writeEn/plot
 	// for the VGA controller, in addition to any other functionality your design may require.
 
-  wire CLOCK_25;
-  // Generate 25 MHz for duty clock
-  always @(posedge CLOCK_50) begin
-    if (!resetn) begin
-      // reset
-      CLOCK_25 <= 0;
-    end else begin
-      CLOCK_25 <= ~CLOCK_25;
-    end
-  end
+//   reg CLOCK_25;
+//   // Generate 25 MHz for duty clock
+//   always @(posedge CLOCK_50) begin
+//     if (!resetn) begin
+//       // reset
+//       CLOCK_25 <= 0;
+//     end else begin
+//       CLOCK_25 <= ~CLOCK_25;
+//     end
+//   end
 
-  wire resetn,go;
+  wire go;
   wire draw_finish,erase_finish,next_move;
   wire delay_cnt_rst;
   wire active,draw_en,erase_en,update_xy;
-  wire draw_finish,erase_finish,next_move;
   assign resetn = KEY[0];
   assign go = ~KEY[1];
 
@@ -87,7 +86,6 @@ module part3
   control c0(
     //Input
     .clk(CLOCK_50),
-    .clk25(CLOCK_25),
     .resetn(resetn),
     .go(go),
     .draw_finish(draw_finish),
@@ -103,31 +101,31 @@ module part3
 
   // Instansiate datapath
   datapath d0(
-	  //Input
+    //Input
     .clk(CLOCK_50),
     .resetn(resetn),
-	  .colour_in(SW[9:7]),
-	  .delay_cnt_rst(delay_cnt_rst),
-	  .active(active),
-	  .draw_en(draw_en),
+    .colour_in(SW[9:7]),
+    .delay_cnt_rst(delay_cnt_rst),
+    .active(active),
+    .draw_en(draw_en),
     .erase_en(erase_en),
     .update_xy(update_xy),
     .x_in(x),
     .y_in(y),
-	  //Output
+    //Output
     .draw_finish(draw_finish),
     .erase_finish(erase_finish),
     .next_move(next_move),
-	  .x_out(x),
-	  .y_out(y),
+    .x_out(x),
+    .y_out(y),
     .colour_out(colour),
     .wren(writeEn)
-	);
+    );
 endmodule
 
 // FSM
 module control(
-  input clk,clk25,resetn,go,
+  input clk,resetn,go,
 
   input draw_finish,
   input erase_finish,
@@ -141,7 +139,7 @@ module control(
 
   localparam  S_RST_ALL	  = 3'd0,
               S_IDLE      = 3'd1,
-	            S_DRAW_BOX  = 3'd2,
+	      S_DRAW_BOX  = 3'd2,
               S_RST_DELAY = 3'd3,
               S_WAIT_PLOT = 3'd4,
               S_ERASE_BOX = 3'd5,
@@ -152,7 +150,7 @@ module control(
   begin: state_table
     case (current_state)
       S_RST_ALL:   next_state <= S_IDLE;
-	    S_IDLE:      next_state <= (go) ? S_DRAW_BOX : S_IDLE;
+      S_IDLE:      next_state <= (go) ? S_DRAW_BOX : S_IDLE;
       S_DRAW_BOX:  next_state <= (draw_finish) ? S_RST_DELAY : S_DRAW_BOX;
       S_RST_DELAY: next_state <= S_WAIT_PLOT;
       S_WAIT_PLOT: next_state <= (next_move) ? S_ERASE_BOX : S_WAIT_PLOT;
@@ -187,12 +185,12 @@ module control(
 
     case (current_state)
       S_RST_ALL: begin
-        delay_cnt_rst = 1'b1;
+        //delay_cnt_rst = 1'b1;
       end
       S_DRAW_BOX: begin
         draw_en = 1'b1;
       end
-      S_RST_DELAY_CNT: begin
+      S_RST_DELAY: begin
         delay_cnt_rst = 1'b1;
       end
       S_ERASE_BOX: begin
@@ -223,7 +221,10 @@ module datapath(
     output reg [2:0] colour_out,
     output reg wren
     );
-
+    
+    wire [7:0] next_x;
+    wire [6:0] next_y;
+    wire delay_cnt_out;
     reg x_offset,y_offset;
 
     always @(posedge clk) begin
@@ -233,7 +234,7 @@ module datapath(
         // 0 = -1, 1 = 1, default: up-right
         x_offset <= 1'b1;
         y_offset <= 0;
-        colour <= 3'b000;
+        colour_out <= 3'b000;
         draw_finish <= 0;
         erase_finish <= 0;
         next_move <= 0;
@@ -242,26 +243,30 @@ module datapath(
       else if (active) begin
         if (draw_en) begin
           wren <= 1'b1;
-          colour <= colour_data;
-          draw_finish <= delay_cnt_out;
+          colour_out <= colour_in;
+          // This needs to change to make a 4x4 box
+          draw_finish <= 1'b1;
         end else if (erase_en) begin
           wren <= 1'b1;
-          colour <= 3'b000;
-          erase_finish <= delay_cnt_out;
+          colour_out <= 3'b000;
+          // This needs to change to make a 4x4 box
+          erase_finish <= 1'b1;
         end else begin
           wren <= 0;
         end
-
+	// If this is 4x4 box, it would be x_out == (0-4)
         if ((x_out == 0) && (!x_offset)) begin
           x_offset <= ~x_offset;
         end
+        // If this is 4x4 box, it would be x_out == (159+4)
         else if ((x_out == 159) && (x_offset)) begin
           x_offset <= ~x_offset;
         end
-
+	// If this is 4x4 box, it would be y_out == (0-4)
         if ((y_out == 0) && (!y_offset)) begin
           y_offset <= ~y_offset;
         end
+        // If this is 4x4 box, it would be y_out == (119+4)
         else if ((y_out == 119) && (y_offset)) begin
           y_offset <= ~y_offset;
         end
@@ -273,9 +278,6 @@ module datapath(
       end
     end
 
-    wire [7:0] next_x;
-    wire [6:0] next_y;
-    wire delay_cnt_out;
     XCounter xc0(
       .clk(clk),
       .en(active),
@@ -292,13 +294,13 @@ module datapath(
     );
     DelayCounter dc0(
       .clk_50mhz(clk),
-      .rst(delay_cnt_rst),
+      .resetn(resetn),
       .en(active),
       .delay_cnt_out(delay_cnt_out)
     );
     FrameCounter fc0(
       .clk_60hz(delay_cnt_out),
-      .rst(delay_cnt_rst), // Using the same signal as dc0
+      .resetn(resetn), // Using the same signal as dc0
       .en(active), // Using the same signal as dc0
       .frame_cnt_out(next_move)
     );
@@ -319,7 +321,7 @@ module XCounter(
     if (en) begin
       if (offset) begin
         x_out <= x + 1;
-      else begin
+      end else begin
         x_out <= x - 1;
       end
     end else begin
@@ -343,7 +345,7 @@ module YCounter(
     if (en) begin
       if (offset) begin
         y_out <= y + 1;
-      else begin
+      end else begin
         y_out <= y - 1;
       end
     end else begin
@@ -353,13 +355,13 @@ module YCounter(
 endmodule
 
 // generate 60 Hz from 50 MHz
-module DelayCounter(clk_50mhz,rst,en,delay_cnt_out);
-  input clk_50mhz,rst,en;
+module DelayCounter(clk_50mhz,resetn,en,delay_cnt_out);
+  input clk_50mhz,resetn,en;
   output reg delay_cnt_out = 0;
 
   reg [18:0] count_reg = 0; // Range 0-524288
-  always @(posedge clk_50mhz or posedge rst) begin
-    if (rst) begin
+  always @(posedge clk_50mhz) begin
+    if (!resetn) begin
       count_reg <= 0;
       delay_cnt_out <= 0;
     end else begin
@@ -369,17 +371,18 @@ module DelayCounter(clk_50mhz,rst,en,delay_cnt_out);
         count_reg <= 0;
         delay_cnt_out <= (en) ? ~delay_cnt_out : 0;
       end
+    end
   end
 endmodule
 
 // generate 1 pulse for every 15 pulses
-module FrameCounter(clk_60hz,rst,en,frame_cnt_out);
-  input clk_60hz,rst,en;
+module FrameCounter(clk_60hz,resetn,en,frame_cnt_out);
+  input clk_60hz,resetn,en;
   output reg frame_cnt_out = 0;
 
   reg [3:0] count_reg = 0; // Range 0-15
-  always @(posedge clk_60hz or posedge rst) begin
-    if (rst) begin
+  always @(posedge clk_60hz) begin
+    if (resetn) begin
       count_reg <= 0;
       frame_cnt_out <= 0;
     end else begin
@@ -387,5 +390,6 @@ module FrameCounter(clk_60hz,rst,en,frame_cnt_out);
         count_reg <= (count_reg == 14) ? 0 : (count_reg + 1);
         frame_cnt_out <= (count_reg > 7);
       end
+    end
   end
 endmodule
