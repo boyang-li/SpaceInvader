@@ -9,7 +9,7 @@ vlib work
 vlog -timescale 1ps/1ps lab7_part3.v
 
 # Load simulation using sync_counter as the top level simulation module.
-vsim part3 -t 1ps
+vsim DelayCounter -t 1ps
 
 # Log all signals and add some signals to waveform window.
 log {/*}
@@ -17,16 +17,7 @@ log {/*}
 add wave {/*}
 
 # Set input values using the force command, signal names need to be in {} brackets.
-force {CLOCK_50} 0 0ps, 1 1ps -r 2
-force {KEY[0]} 0 0ps, 1 3ps
-force {KEY[1]} 0
-force {SW[7]} 1
-force {SW[8]} 0
-force {SW[9]} 0
-run 10ps
-
-force {KEY[1]} 1
-run 5ps
-
-force {KEY[1]} 0
-run 100000000ps
+force {clk_50mhz} 1 0ps, 0 1ps -r 2
+force {rst} 1 0ps, 0 3ps
+force {en} 1
+run 100000003ps

@@ -40,26 +40,26 @@ module part3
 	// Create an Instance of a VGA controller - there can be only one!
 	// Define the number of colours as well as the initial background
 	// image file (.MIF) for the controller.
-	vga_adapter VGA(
-			.resetn(resetn),
-			.clock(CLOCK_50),
-			.colour(colour),
-			.x(x),
-			.y(y),
-			.plot(writeEn),
-			/* Signals for the DAC to drive the monitor. */
-			.VGA_R(VGA_R),
-			.VGA_G(VGA_G),
-			.VGA_B(VGA_B),
-			.VGA_HS(VGA_HS),
-			.VGA_VS(VGA_VS),
-			.VGA_BLANK(VGA_BLANK_N),
-			.VGA_SYNC(VGA_SYNC_N),
-			.VGA_CLK(VGA_CLK));
-		defparam VGA.RESOLUTION = "160x120";
-		defparam VGA.MONOCHROME = "FALSE";
-		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
-		defparam VGA.BACKGROUND_IMAGE = "black.mif";
+// 	vga_adapter VGA(
+// 			.resetn(resetn),
+// 			.clock(CLOCK_50),
+// 			.colour(colour),
+// 			.x(x),
+// 			.y(y),
+// 			.plot(writeEn),
+// 			/* Signals for the DAC to drive the monitor. */
+// 			.VGA_R(VGA_R),
+// 			.VGA_G(VGA_G),
+// 			.VGA_B(VGA_B),
+// 			.VGA_HS(VGA_HS),
+// 			.VGA_VS(VGA_VS),
+// 			.VGA_BLANK(VGA_BLANK_N),
+// 			.VGA_SYNC(VGA_SYNC_N),
+// 			.VGA_CLK(VGA_CLK));
+// 		defparam VGA.RESOLUTION = "160x120";
+// 		defparam VGA.MONOCHROME = "FALSE";
+// 		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
+// 		defparam VGA.BACKGROUND_IMAGE = "black.mif";
 
 	// Put your code here. Your code should produce signals x,y,colour and writeEn/plot
 	// for the VGA controller, in addition to any other functionality your design may require.
@@ -74,9 +74,14 @@ module part3
 //       CLOCK_25 <= ~CLOCK_25;
 //     end
 //   end
-
+  
+  //TEST
+  wire [7:0] next_x;
+  wire [6:0] next_y;
+  wire [2:0] cur_state;
+  
   wire go;
-  wire draw_finish,erase_finish,next_move;
+  wire on_plot,next_move;
   wire delay_cnt_rst;
   wire active,draw_en,erase_en,update_xy;
   assign resetn = KEY[0];
@@ -88,15 +93,15 @@ module part3
     .clk(CLOCK_50),
     .resetn(resetn),
     .go(go),
-    .draw_finish(draw_finish),
-    .erase_finish(erase_finish),
+    .on_plot(on_plot),
     .next_move(next_move),
     //Output
     .delay_cnt_rst(delay_cnt_rst),
     .active(active),
     .draw_en(draw_en),
     .erase_en(erase_en),
-    .update_xy(update_xy)
+    .update_xy(update_xy),
+    .current_state(cur_state)
   );
 
   // Instansiate datapath
@@ -108,18 +113,18 @@ module part3
     .delay_cnt_rst(delay_cnt_rst),
     .active(active),
     .draw_en(draw_en),
-    .erase_en(erase_en),
     .update_xy(update_xy),
     .x_in(x),
     .y_in(y),
     //Output
-    .draw_finish(draw_finish),
-    .erase_finish(erase_finish),
+    .on_plot(on_plot),
     .next_move(next_move),
     .x_out(x),
     .y_out(y),
     .colour_out(colour),
-    .wren(writeEn)
+    .wren(writeEn),
+    .next_x(next_x),
+    .next_y(next_y)
     );
 endmodule
 
@@ -127,16 +132,17 @@ endmodule
 module control(
   input clk,resetn,go,
 
-  input draw_finish,
-  input erase_finish,
+  input on_plot,
   input next_move,
 
   output reg delay_cnt_rst,
-  output reg active,draw_en,erase_en,update_xy
+  output reg active,draw_en,erase_en,update_xy,
+  output reg [2:0] current_state 
   );
 
-  reg [2:0] current_state, next_state;
-
+  //reg [2:0] current_state, next_state;
+  reg [2:0] next_state;
+  
   localparam  S_RST_ALL	  = 3'd0,
               S_IDLE      = 3'd1,
 	      S_DRAW_BOX  = 3'd2,
@@ -151,10 +157,10 @@ module control(
     case (current_state)
       S_RST_ALL:   next_state <= S_IDLE;
       S_IDLE:      next_state <= (go) ? S_DRAW_BOX : S_IDLE;
-      S_DRAW_BOX:  next_state <= (draw_finish) ? S_RST_DELAY : S_DRAW_BOX;
+      S_DRAW_BOX:  next_state <= (on_plot) ? S_RST_DELAY : S_DRAW_BOX;
       S_RST_DELAY: next_state <= S_WAIT_PLOT;
       S_WAIT_PLOT: next_state <= (next_move) ? S_ERASE_BOX : S_WAIT_PLOT;
-      S_ERASE_BOX: next_state <= (erase_finish) ? S_UPDATE_XY : S_ERASE_BOX;
+      S_ERASE_BOX: next_state <= S_UPDATE_XY;
       S_UPDATE_XY: next_state <= S_DRAW_BOX;
       default:     next_state <= S_RST_ALL;
     endcase
@@ -175,7 +181,7 @@ module control(
   end
 
   // Output logic aka all of our datapath control signals
-  always @(posedge clk)
+  always @(*)
   begin: enable_signals
     // By defaults...
     delay_cnt_rst = 1'b0;
@@ -185,15 +191,20 @@ module control(
 
     case (current_state)
       S_RST_ALL: begin
-        //delay_cnt_rst = 1'b1;
+        delay_cnt_rst = 1'b1;
       end
       S_DRAW_BOX: begin
         draw_en = 1'b1;
       end
       S_RST_DELAY: begin
         delay_cnt_rst = 1'b1;
+        draw_en = 1'b1;
+      end
+      S_WAIT_PLOT: begin
+        draw_en = 1'b1;
       end
       S_ERASE_BOX: begin
+	// We just need to reset the vga_adapter
         erase_en = 1'b1;
       end
       S_UPDATE_XY: begin
@@ -211,23 +222,28 @@ module datapath(
     input clk,resetn,
     input [2:0] colour_in,
     input delay_cnt_rst,
-    input active,draw_en,erase_en,update_xy,
+    input active,draw_en,update_xy,
     input [7:0] x_in,
     input [6:0] y_in,
     // Output
-    output reg draw_finish,erase_finish,next_move,
+    output reg on_plot,next_move,
     output reg [7:0] x_out,
     output reg [6:0] y_out,
     output reg [2:0] colour_out,
-    output reg wren
+    output reg wren,
+    output [7:0] next_x,
+    output [6:0] next_y
     );
     
-    wire [7:0] next_x;
-    wire [6:0] next_y;
+//     wire [7:0] next_x;
+//     wire [6:0] next_y;
     wire delay_cnt_out;
     reg x_offset,y_offset;
 
     always @(posedge clk) begin
+      // By defaults...
+      next_move <= 0;
+    
       if (!resetn) begin
         x_out <= 0;
         y_out <= 7'd60;
@@ -235,8 +251,7 @@ module datapath(
         x_offset <= 1'b1;
         y_offset <= 0;
         colour_out <= 3'b000;
-        draw_finish <= 0;
-        erase_finish <= 0;
+        on_plot <= 0;
         next_move <= 0;
         wren <= 0;
       end
@@ -245,14 +260,11 @@ module datapath(
           wren <= 1'b1;
           colour_out <= colour_in;
           // This needs to change to make a 4x4 box
-          draw_finish <= 1'b1;
-        end else if (erase_en) begin
-          wren <= 1'b1;
-          colour_out <= 3'b000;
-          // This needs to change to make a 4x4 box
-          erase_finish <= 1'b1;
+          on_plot <= 1'b1;
         end else begin
-          wren <= 0;
+	  wren <= 0;
+	  colour_out <= 3'b000;
+	  on_plot <= 1'b0;
         end
 	// If this is 4x4 box, it would be x_out == (0-4)
         if ((x_out == 0) && (!x_offset)) begin
@@ -277,7 +289,13 @@ module datapath(
         end
       end
     end
-
+   
+    always @(posedge delay_cnt_out) begin
+      if (active && draw_en) begin
+	next_move <= 1'b1;
+      end
+    end
+    
     XCounter xc0(
       .clk(clk),
       .en(active),
@@ -294,15 +312,9 @@ module datapath(
     );
     DelayCounter dc0(
       .clk_50mhz(clk),
-      .resetn(resetn),
+      .rst(delay_cnt_rst),
       .en(active),
-      .delay_cnt_out(delay_cnt_out)
-    );
-    FrameCounter fc0(
-      .clk_60hz(delay_cnt_out),
-      .resetn(resetn), // Using the same signal as dc0
-      .en(active), // Using the same signal as dc0
-      .frame_cnt_out(next_move)
+      .clk_15hz_out(delay_cnt_out)
     );
 endmodule
 
@@ -355,40 +367,37 @@ module YCounter(
 endmodule
 
 // generate 60 Hz from 50 MHz
-module DelayCounter(clk_50mhz,resetn,en,delay_cnt_out);
-  input clk_50mhz,resetn,en;
-  output reg delay_cnt_out = 0;
-
-  reg [18:0] count_reg = 0; // Range 0-524288
+module DelayCounter(clk_50mhz,rst,en,clk_15hz_out);
+  input clk_50mhz,rst,en;
+  output reg clk_15hz_out = 0;
+  
+  reg clk_60hz; // This is approximating the 60fps rate
+  reg [3:0] cnt_reg_15hz = 0; // Range 0-15
+  reg [18:0] cnt_reg_60hz = 0; // Range 0-524288
   always @(posedge clk_50mhz) begin
-    if (!resetn) begin
-      count_reg <= 0;
-      delay_cnt_out <= 0;
+    if (rst) begin
+      cnt_reg_60hz <= 0;
+      clk_60hz <= 0;
+      
+      cnt_reg_15hz <= 0;
+      clk_15hz_out <= 0;
     end else begin
-      if (count_reg < 416666) begin
-	      count_reg <= count_reg + 1;
+      if (cnt_reg_60hz < 416666) begin
+	cnt_reg_60hz <= cnt_reg_60hz + 1;
       end else begin
-        count_reg <= 0;
-        delay_cnt_out <= (en) ? ~delay_cnt_out : 0;
+        cnt_reg_60hz <= 0;
+        clk_60hz <= (en) ? ~clk_60hz : 0;
       end
     end
   end
-endmodule
-
-// generate 1 pulse for every 15 pulses
-module FrameCounter(clk_60hz,resetn,en,frame_cnt_out);
-  input clk_60hz,resetn,en;
-  output reg frame_cnt_out = 0;
-
-  reg [3:0] count_reg = 0; // Range 0-15
+  // generate 1 pulse for every 15 pulses
   always @(posedge clk_60hz) begin
-    if (resetn) begin
-      count_reg <= 0;
-      frame_cnt_out <= 0;
-    end else begin
-      if (en) begin
-        count_reg <= (count_reg == 14) ? 0 : (count_reg + 1);
-        frame_cnt_out <= (count_reg > 7);
+    if (en) begin
+      if (cnt_reg_15hz == 7) begin
+	cnt_reg_15hz <= 0;
+	clk_15hz_out <= ~clk_15hz_out;
+      end else begin
+	cnt_reg_15hz <= cnt_reg_15hz + 1;
       end
     end
   end
