@@ -40,29 +40,32 @@ module SpaceInvader(
   // Create an Instance of a VGA controller - there can be only one!
   // Define the number of colours as well as the initial background
   // image file (.MIF) for the controller.
-  vga_adapter VGA(
-    .resetn(resetn),
-    .clock(CLOCK_50),
-    .colour(colour),
-    .x(x),
-    .y(y),
-    .plot(writeEn),
-    /* Signals for the DAC to drive the monitor. */
-    .VGA_R(VGA_R),
-    .VGA_G(VGA_G),
-    .VGA_B(VGA_B),
-    .VGA_HS(VGA_HS),
-    .VGA_VS(VGA_VS),
-    .VGA_BLANK(VGA_BLANK_N),
-    .VGA_SYNC(VGA_SYNC_N),
-    .VGA_CLK(VGA_CLK));
+  //vga_adapter VGA(
+  //  .resetn(resetn),
+  //  .clock(CLOCK_50),
+  //  .colour(colour),
+  //  .x(x),
+  //  .y(y),
+  //  .plot(writeEn),
+  //  /* Signals for the DAC to drive the monitor. */
+  //  .VGA_R(VGA_R),
+  //  .VGA_G(VGA_G),
+  //  .VGA_B(VGA_B),
+  //  .VGA_HS(VGA_HS),
+  //  .VGA_VS(VGA_VS),
+  //  .VGA_BLANK(VGA_BLANK_N),
+  //  .VGA_SYNC(VGA_SYNC_N),
+  //  .VGA_CLK(VGA_CLK));
 
-  defparam VGA.RESOLUTION = "160x120";
-  defparam VGA.MONOCHROME = "FALSE";
-  defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
-  defparam VGA.BACKGROUND_IMAGE = "black.mif";
+  //defparam VGA.RESOLUTION = "160x120";
+  //defparam VGA.MONOCHROME = "FALSE";
+  //defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
+  //defparam VGA.BACKGROUND_IMAGE = "black.mif";
 
   // Put your code here. Your code should produce signals x,y,colour and writeEn/plot
+  // for the VGA controller, in addition to any other functionality your design may require.
+
+	// Put your code here. Your code should produce signals x,y,colour and writeEn/plot
   // for the VGA controller, in addition to any other functionality your design may require.
 
   wire resetn;
@@ -461,6 +464,66 @@ module player(
       plot_finish <= 1'b1;
     end
 
+  end
+endmodule
+
+// XCounter takes current X position & direction,
+// and then offset +1/-1 depending on the direction.
+module XCounter(
+  input clk,
+  input resetn,
+  input en,
+  input [7:0] x, // X position
+  input [1:0] offset, // 2'b00 = 0; 2'b01 = 1; 2'b11 = -1
+
+  output reg [7:0] x_out
+  );
+
+  always @(posedge clk) begin
+   if (!resetn) begin
+    x_out <= 0;
+   end
+    else if (en) begin
+      if (offset == 2'b01) begin
+        x_out <= x + 1;
+      end else if (offset == 2'b11) begin
+        x_out <= x - 1;
+      end else begin
+      x_out <= x;
+      end
+    end else begin
+      x_out <= x;
+    end
+  end
+endmodule
+
+// YCounter takes current Y position & direction,
+// and then offset +1/-1 depending on the direction.
+module YCounter(
+  input clk,
+  input resetn,
+  input en,
+  input [6:0] y, // y position
+  input [1:0] offset, // 2'b00 = 0; 2'b01 = 1; 2'b11 = -1
+
+  output reg [6:0] y_out
+  );
+
+  always @(posedge clk) begin
+   if (!resetn) begin
+    y_out <= 0;
+   end
+    else if (en) begin
+      if (offset == 2'b01) begin
+        y_out <= y + 1;
+      end else if (offset == 2'b11) begin
+        y_out <= y - 1;
+      end else begin
+      y_out <= y;
+      end
+    end else begin
+      y_out <= y;
+    end
   end
 endmodule
 
