@@ -324,7 +324,7 @@ module datapath(
 
     //     wire [7:0] next_x;
     //     wire [6:0] next_y;
-    wire frame_cnt_out,delay_cnt_out;
+    wire frame_cnt_out,pixrate_4_out,pixrate_6_out,pixrate_10_out;
     reg on_next_move = 0;
 
     // 0 = player, 1 =
@@ -377,7 +377,7 @@ module datapath(
     player Player(
       .clk(clk),
       .resetn(resetn),
-      .update_xy_en(update_xy_en),
+      .update_xy_en(pixrate_6_out),
       .btn_left(btn_left),
       .btn_right(btn_right),
       .x(player_x),
@@ -388,7 +388,7 @@ module datapath(
 	 alien Alien1(
 		.clk(clk),
       .resetn(resetn),
-      .update_xy_en(update_xy_en),
+      .update_xy_en(pixrate_4_out),
 		.l_border(l_alien_col1),
 		.r_border(r_alien_col1),
       .x(alien1_x),
@@ -400,7 +400,7 @@ module datapath(
 	 alien Alien2(
 		.clk(clk),
       .resetn(resetn),
-      .update_xy_en(update_xy_en),
+      .update_xy_en(pixrate_4_out),
 		.l_border(l_alien_col2),
 		.r_border(r_alien_col2),
       .x(alien2_x),
@@ -412,7 +412,7 @@ module datapath(
 	 alien Alien3(
 		.clk(clk),
       .resetn(resetn),
-      .update_xy_en(update_xy_en),
+      .update_xy_en(pixrate_4_out),
 		.l_border(l_alien_col3),
 		.r_border(r_alien_col3),
       .x(alien3_x),
@@ -425,7 +425,7 @@ module datapath(
 		.clk(clk),
       .resetn(resetn),
 		.playerXPos(cur_player_x),
-      .update_xy_en(update_xy_en),
+      .update_xy_en(pixrate_10_out),
 		.btn_fire(btn_fire),
       .x(bullet_x),
       .y(bullet_y),
@@ -434,16 +434,16 @@ module datapath(
 		//.colour(bullet_colour)
 		
   );
-	 
-	
-	 
+	 	 
 
     DelayCounter dc0(
       .clk_50mhz(clk),
       .rst(rst_delay_en),
       .en(in_game),
       .clk_60hz_out(frame_cnt_out),
-      .clk_15hz_out(delay_cnt_out)
+      .pixrate_4_out(pixrate_4_out),
+      .pixrate_6_out(pixrate_6_out),
+      .pixrate_10_out(pixrate_10_out)
     );
 
 
@@ -484,10 +484,10 @@ module datapath(
       if (plot_player_en) begin
         x_out <= player_x;
         y_out <= player_y;
-		  cur_player_x <= player_x;
+	cur_player_x <= player_x;
         colour_out <= 3'b010; // Green
         wren <= 1'b1;
-        plot_player_done <= plot_player_finish;
+        plot_player_done <= plot_player_finish;    
       end else if (plot_alien1_en) begin
 		  x_out <= alien1_x;
         y_out <= alien1_y;
@@ -701,13 +701,15 @@ endmodule
 
 
 // generate 60 Hz from 50 MHz
-module DelayCounter(clk_50mhz,rst,en,clk_60hz_out,clk_15hz_out);
+module DelayCounter(clk_50mhz,rst,en,clk_60hz_out,pixrate_4_out,pixrate_6_out,pixrate_10_out);
   input clk_50mhz,rst,en;
   output reg clk_60hz_out; // This is approximating the 60hz rate
-  output reg clk_15hz_out = 0; // This is approximating the 15hz rate
+  output reg pixrate_4_out = 0; // This is the 4 pixels persec rate
+  output reg pixrate_6_out = 0; // This is the 6 pixels persec rate
+  output reg pixrate_10_out = 0; // This is the 10 pixels persec rate
 
   reg [18:0] cnt_reg_60hz = 0; // Range 0-524288
-  reg [3:0] cnt_reg_15hz = 0; // Range 0-15
+  reg [2:0] cnt_pixrate_4,cnt_pixrate_6,cnt_pixrate_10; // Range 0-7
 
   always @(posedge clk_50mhz or posedge rst) begin
    if (rst) begin
@@ -724,18 +726,38 @@ module DelayCounter(clk_50mhz,rst,en,clk_60hz_out,clk_15hz_out);
     end
   end
 
-  // generate 1 pulse for every 15 pulses
+  // generate 1 pulse for every 15/10/6 frames
   always @(posedge clk_60hz_out or posedge rst) begin
    if (rst) begin
-    cnt_reg_15hz <= 0;
-      clk_15hz_out <= 0;
+      cnt_pixrate_4 <= 0;
+      pixrate_4_out <= 0;
+
+      cnt_pixrate_6 <= 0;
+      pixrate_6_out <= 0;
+      
+      cnt_pixrate_10 <= 0;
+      pixrate_10_out <= 0;
    end
    else if (en) begin
-      if (cnt_reg_15hz == 7) begin
-      cnt_reg_15hz <= 0;
-      clk_15hz_out <= ~clk_15hz_out;
+      if (cnt_pixrate_4 == 3'd7) begin
+	cnt_pixrate_4 <= 0;
+	pixrate_4_out <= ~pixrate_4_out;
       end else begin
-      cnt_reg_15hz <= cnt_reg_15hz + 1;
+	cnt_pixrate_4 <= cnt_pixrate_4 + 1;
+      end
+      
+      if (cnt_pixrate_6 == 3'd5) begin
+	cnt_pixrate_6 <= 0;
+	pixrate_6_out <= ~pixrate_6_out;
+      end else begin
+	cnt_pixrate_6 <= cnt_pixrate_6 + 1;
+      end
+      
+      if (cnt_pixrate_10 == 3'd3) begin
+	cnt_pixrate_10 <= 0;
+	pixrate_10_out <= ~pixrate_10_out;
+      end else begin
+	cnt_pixrate_10 <= cnt_pixrate_10 + 1;
       end
     end
   end
