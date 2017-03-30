@@ -72,7 +72,9 @@ module SpaceInvader(
   assign go = SW[0];
 
   wire bullet_flying,plot_player_done,plot_aliens_done,plot_bullet_done,next_move,clear_done,update_xy_done;
-  wire in_game,rst_xy,plot_player_en,plot_aliens_en,plot_bullet_en,rst_delay_en,clear_en,update_xy_en;
+  wire in_game,rst_xy,plot_player_en,plot_bullet_en,rst_delay_en,clear_en,update_xy_en;
+  
+  wire plot_alien1_en, plot_alien2_en, plot_alien3_en;
 
   wire [4:0] current_state,next_state;
 
@@ -94,7 +96,9 @@ module SpaceInvader(
     .in_game(in_game),
     .rst_xy(rst_xy),
     .plot_player_en(plot_player_en),
-      .plot_aliens_en(plot_aliens_en),
+      .plot_alien1_en(plot_alien1_en),
+		.plot_alien2_en(plot_alien2_en),
+		.plot_alien3_en(plot_alien3_en),
       .plot_bullet_en(plot_bullet_en),
       .rst_delay_en(rst_delay_en),
       .clear_en(clear_en),
@@ -111,14 +115,16 @@ module SpaceInvader(
     .resetn(resetn),
     .btn_left(KEY[3]),
     .btn_right(KEY[2]),
-    .btn_fire(KEY[1]),
+    .btn_fire(~KEY[1]),
     //input [2:0] colour_in,
 
     // Control signals
     .in_game(in_game),
       .rst_xy(rst_xy),
       .plot_player_en(plot_player_en),
-      .plot_aliens_en(plot_aliens_en),
+      .plot_alien1_en(plot_alien1_en),
+		.plot_alien2_en(plot_alien2_en),
+		.plot_alien3_en(plot_alien3_en),
       .plot_bullet_en(plot_bullet_en),
       .rst_delay_en(rst_delay_en),
       .clear_en(clear_en),
@@ -160,8 +166,11 @@ module control(
   output reg in_game,
   output reg rst_xy,
   output reg plot_player_en,
-  output reg plot_aliens_en,
+  output reg plot_alien1_en,
+  output reg plot_alien2_en,
+  output reg plot_alien3_en,
   output reg plot_bullet_en,
+  output reg check_bullet_en,
   output reg rst_delay_en,
   output reg clear_en,
   output reg update_xy_en,
@@ -176,13 +185,17 @@ module control(
               S_RST_ALL      = 5'd1,
               S_CYCLE_BEGIN  = 5'd2,
               S_PLOT_PLAYER  = 5'd3,
-              S_PLOT_ALIENS  = 5'd4,
-              S_CHECK_SHOT   = 5'd5,
-              S_PLOT_BULLET  = 5'd6,
-              S_RST_DELAY    = 5'd7,
-              S_WAIT_PLOT    = 5'd8,
-              S_CLEAR_SCREEN = 5'd9,
-              S_UPDATE_XY    = 5'd10;
+              S_PLOT_ALIEN1  = 5'd4,
+				  S_PLOT_ALIEN2  = 5'd5,
+				  S_PLOT_ALIEN3  = 5'd6,
+				  //add more aliens below if needed
+				  
+              S_CHECK_SHOT   = 5'd7,
+              S_PLOT_BULLET  = 5'd8,
+              S_RST_DELAY    = 5'd9,
+              S_WAIT_PLOT    = 5'd10,
+              S_CLEAR_SCREEN = 5'd11,
+              S_UPDATE_XY    = 5'd12;
 
   // Next state logic aka our state table
   always @(posedge clk)
@@ -191,8 +204,10 @@ module control(
       S_IDLE:         next_state <= (go) ? S_RST_ALL : S_IDLE;
       S_RST_ALL:      next_state <= S_CYCLE_BEGIN;
       S_CYCLE_BEGIN:  next_state <= S_PLOT_PLAYER;
-      S_PLOT_PLAYER:  next_state <= (plot_player_done) ? S_PLOT_ALIENS : S_PLOT_PLAYER;
-      S_PLOT_ALIENS:  next_state <= (plot_aliens_done) ? S_CHECK_SHOT : S_PLOT_ALIENS;
+      S_PLOT_PLAYER:  next_state <= (plot_player_done) ? S_PLOT_ALIEN1 : S_PLOT_PLAYER;
+      S_PLOT_ALIEN1:  next_state <= (plot_aliens_done) ? S_PLOT_ALIEN2 : S_PLOT_ALIEN1;
+		S_PLOT_ALIEN2:  next_state <= (plot_aliens_done) ? S_PLOT_ALIEN3 : S_PLOT_ALIEN2;
+		S_PLOT_ALIEN3:  next_state <= (plot_aliens_done) ? S_CHECK_SHOT : S_PLOT_ALIEN3;
       S_CHECK_SHOT:   next_state <= (bullet_flying) ? S_PLOT_BULLET : S_RST_DELAY;
       S_PLOT_BULLET:  next_state <= (plot_bullet_done) ? S_RST_DELAY : S_PLOT_BULLET;
       S_RST_DELAY:    next_state <= S_WAIT_PLOT;
@@ -218,7 +233,9 @@ module control(
     // By defaults...
     rst_xy         <= 1'b0;
     plot_player_en <= 1'b0;
-    plot_aliens_en <= 1'b0;
+    plot_alien1_en <= 1'b0;
+	 plot_alien2_en <= 1'b0;
+	 plot_alien3_en <= 1'b0;
     plot_bullet_en <= 1'b0;
     rst_delay_en   <= 1'b0;
     clear_en       <= 1'b0;
@@ -237,9 +254,20 @@ module control(
       S_PLOT_PLAYER: begin
         plot_player_en <= 1'b1;
       end
-      S_PLOT_ALIENS: begin
-        plot_aliens_en <= 1'b1;
+      S_PLOT_ALIEN1: begin
+        plot_alien1_en <= 1'b1;
       end
+		S_PLOT_ALIEN2: begin
+        plot_alien2_en <= 1'b1;
+      end
+		S_PLOT_ALIEN3: begin
+        plot_alien3_en <= 1'b1;
+      end
+		
+		S_CHECK_SHOT: begin
+        check_bullet_en <= 1'b1;
+      end
+		
       S_PLOT_BULLET: begin
         plot_bullet_en <= 1'b1;
       end
@@ -268,8 +296,11 @@ module datapath(
     input in_game,
     input rst_xy,
     input plot_player_en,
-    input plot_aliens_en,
+    input plot_alien1_en,
+	 input plot_alien2_en,
+	 input plot_alien3_en,
     input plot_bullet_en,
+	 input check_bullet_en,
     input rst_delay_en,
     input clear_en,
     input update_xy_en,
@@ -301,6 +332,23 @@ module datapath(
 
     wire [7:0] player_x;
     wire [6:0] player_y;
+	 reg [7:0] cur_player_x; 
+	 
+	 
+	 wire [7:0] l_alien_col1, l_alien_col2, l_alien_col3; 
+	 wire [7:0] r_alien_col1, r_alien_col2, r_alien_col3; 
+	 
+	 //Alien 1 path
+	 assign l_alien_col1 = 8'd50;
+	 assign r_alien_col1 = 8'd69;
+	 
+	 //Alien 2 path
+	 assign l_alien_col2 = 8'd70;
+	 assign r_alien_col2 = 8'd89;
+	 
+	 //ALien 3 path
+	 assign l_alien_col3 = 8'd90;
+	 assign r_alien_col3 = 8'd109;
 
     wire [7:0] alien1_x;
     wire [6:0] alien1_y;
@@ -322,11 +370,9 @@ module datapath(
 
     wire plot_player_finish;
 	 wire plot_alien1_finish;
-	 wire plot_alien2_finish;
+	 wire plot_alien2_finish; 
 	 wire plot_alien3_finish;
-	 wire plot_Pbullet_finish;
-	 //wire plot_alien4_finish;
-	// wire plot_alien5_finish;
+
 	 
     player Player(
       .clk(clk),
@@ -343,45 +389,53 @@ module datapath(
 		.clk(clk),
       .resetn(resetn),
       .update_xy_en(update_xy_en),
+		.l_border(l_alien_col1),
+		.r_border(r_alien_col1),
       .x(alien1_x),
       .y(alien1_y),
       .plot_finish(plot_alien1_finish)
+		
+	 );
+	 
+	 alien Alien2(
+		.clk(clk),
+      .resetn(resetn),
+      .update_xy_en(update_xy_en),
+		.l_border(l_alien_col2),
+		.r_border(r_alien_col2),
+      .x(alien2_x),
+      .y(alien2_y),
+      .plot_finish(plot_alien2_finish)
+		
+	 );
+	 
+	 alien Alien3(
+		.clk(clk),
+      .resetn(resetn),
+      .update_xy_en(update_xy_en),
+		.l_border(l_alien_col3),
+		.r_border(r_alien_col3),
+      .x(alien3_x),
+      .y(alien3_y),
+      .plot_finish(plot_alien3_finish)
 		
 	 );
   
   bullet PlayerBullet(
 		.clk(clk),
       .resetn(resetn),
-		.playerXPos(player_x),
+		.playerXPos(cur_player_x),
       .update_xy_en(update_xy_en),
 		.btn_fire(btn_fire),
       .x(bullet_x),
       .y(bullet_y),
 		.bullet_flying(bullet_flying_Wire),
-      .plot_finish(plot_Pbullet_finish),
+      .plot_finish(plot_Pbullet_finish)
 		//.colour(bullet_colour)
 		
   );
 	 
-//	 alien Alien2(
-//		.clk(clk),
-//      .resetn(resetn),
-//      .update_xy_en(update_xy_en),
-//      .x(alien2_x),
-//      .y(alien2_y),
-//      .plot_finish(plot_alien2_finish)
-//		
-//	 );
-//	 
-//	 alien Alien3(
-//		.clk(clk),
-//      .resetn(resetn),
-//      .update_xy_en(update_xy_en),
-//      .x(alien3_x),
-//      .y(alien3_y),
-//      .plot_finish(plot_alien3_finish)
-//		
-//	 );
+	
 	 
 
     DelayCounter dc0(
@@ -397,6 +451,7 @@ module datapath(
     always @(posedge clk) begin
       // By defaults...
       next_move <= 0;
+		bullet_flying <= bullet_flying_Wire;
 
       if (!resetn) begin
       // Outputs to VGA
@@ -406,7 +461,7 @@ module datapath(
         wren <= 0;
 
         // Outputs to control
-        bullet_flying <= 0;
+        //shot_fired <= 0;
         plot_player_done <= 0;
         plot_aliens_done <= 0;
         plot_bullet_done <= 0;
@@ -429,23 +484,36 @@ module datapath(
       if (plot_player_en) begin
         x_out <= player_x;
         y_out <= player_y;
+		  cur_player_x <= player_x;
         colour_out <= 3'b010; // Green
         wren <= 1'b1;
         plot_player_done <= plot_player_finish;
-      end else if (plot_aliens_en) begin
-        x_out <= alien1_x;
+      end else if (plot_alien1_en) begin
+		  x_out <= alien1_x;
         y_out <= alien1_y;
         colour_out <= 3'b100; // Red
         wren <= 1'b1;
-        plot_aliens_done <= plot_alien1_finish;
+		  plot_aliens_done <= plot_alien1_finish;
+		  
+		end else if (plot_alien2_en) begin
+        x_out <= alien2_x;
+        y_out <= alien2_y;
+		  colour_out <= 3'b100; // Red
+        wren <= 1'b1;
+		  plot_aliens_done <= plot_alien2_finish;
+		  
+		end else if (plot_alien3_en) begin
+		  x_out <= alien3_x;
+        y_out <= alien3_y;
+		  colour_out <= 3'b100; // Red
+        wren <= 1'b1;
+		  plot_aliens_done <= plot_alien3_finish;
       end else if (plot_bullet_en) begin
-        //
 		  x_out <= bullet_x;
         y_out <= bullet_y;
-		  if(bullet_flying_Wire == 1'b1) begin
-				colour_out <= 3'b111; // Red
-		  end
+		  colour_out <= 3'b111;
         wren <= 1'b1;
+		  
         plot_bullet_done <= plot_Pbullet_finish;
       end
 
@@ -487,6 +555,7 @@ endmodule
 module alien(
   // Inputs
   input clk,resetn,update_xy_en,
+  input [7:0] l_border, r_border,
   //Outputs
   output reg [7:0] x,
   output reg [6:0] y,
@@ -501,15 +570,15 @@ module alien(
     if (!resetn) begin
       // starting position of player
       x_offset <= 2'b01;
-      x <= 8'd50;
+      x <= l_border;
       y <= 7'd15;
       plot_finish <= 0;
     end
     else begin
-      if ((x == 150) && (x_offset == 2'b01)) begin // left btn pressed
+      if ((x == r_border) && (x_offset == 2'b01)) begin // left btn pressed
         x_offset <= 2'b11; // offset = -1
 		  y <= y + 1; // move the alien down
-      end else if ((x == 50) && (x_offset == 2'b11)) begin // right btn pressed
+      end else if ((x == l_border) && (x_offset == 2'b11)) begin // right btn pressed
         x_offset <= 2'b01; // offset = 1
 		  y <= y + 1; //move alien down
       end else begin
@@ -584,40 +653,42 @@ module bullet(
   output reg [7:0] x,
   output reg [6:0] y,
   output reg plot_finish,
-  output reg bullet_flying,
-  output reg [2:0] colour
+  output reg bullet_flying
+  //output [2:0] colour
   );
 
   reg [1:0] y_offset;
 
   always @(posedge clk) begin
     plot_finish <= 0;
-
     if (!resetn) begin
       // starting position of player
       y_offset <= 0;
-      x <= playerXPos;
+      x <= 8'd68;
       y <= 7'd111;
       plot_finish <= 0;
-		colour <= 3'b000;
+		bullet_flying <= 1'b0;
+		//colour <= 3'b000;
     end
     else begin
 		if (!bullet_flying && btn_fire) begin
 			bullet_flying <= 1'b1;
 			y_offset <= 2'b11;
-			colour <= 3'b111;
+			x <= playerXPos;
+			//colour <= 3'b111;
 		end
 		
-      if ((y == 0) && bullet_flying) begin // left btn pressed
+      if ((y == 0)) begin // left btn pressed
         y_offset <= 0; // offset = -1
-		  colour <= 3'b000;
+		  //colour <= 3'b000;
 		  y <= 7'd111;
 		  bullet_flying <= 0;
 		end
       if (update_xy_en && bullet_flying) begin
         if (y_offset == 2'b11)
-
           y <= y - 1;
+		  if (y_offset == 0)
+          y <= y;
       end
 
       // TODO
