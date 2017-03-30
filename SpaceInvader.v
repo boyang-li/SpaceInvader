@@ -96,13 +96,13 @@ module SpaceInvader(
     .in_game(in_game),
     .rst_xy(rst_xy),
     .plot_player_en(plot_player_en),
-      .plot_alien1_en(plot_alien1_en),
-		.plot_alien2_en(plot_alien2_en),
-		.plot_alien3_en(plot_alien3_en),
-      .plot_bullet_en(plot_bullet_en),
-      .rst_delay_en(rst_delay_en),
-      .clear_en(clear_en),
-      .update_xy_en(update_xy_en),
+    .plot_alien1_en(plot_alien1_en),
+    .plot_alien2_en(plot_alien2_en),
+    .plot_alien3_en(plot_alien3_en),
+    .plot_bullet_en(plot_bullet_en),
+    .rst_delay_en(rst_delay_en),
+    .clear_en(clear_en),
+    .update_xy_en(update_xy_en),
 
     // for test
     .current_state(current_state),
@@ -120,31 +120,31 @@ module SpaceInvader(
 
     // Control signals
     .in_game(in_game),
-      .rst_xy(rst_xy),
-      .plot_player_en(plot_player_en),
-      .plot_alien1_en(plot_alien1_en),
-		.plot_alien2_en(plot_alien2_en),
-		.plot_alien3_en(plot_alien3_en),
-      .plot_bullet_en(plot_bullet_en),
-      .rst_delay_en(rst_delay_en),
-      .clear_en(clear_en),
-      .update_xy_en(update_xy_en),
+    .rst_xy(rst_xy),
+    .plot_player_en(plot_player_en),
+    .plot_alien1_en(plot_alien1_en),
+    .plot_alien2_en(plot_alien2_en),
+    .plot_alien3_en(plot_alien3_en),
+    .plot_bullet_en(plot_bullet_en),
+    .rst_delay_en(rst_delay_en),
+    .clear_en(clear_en),
+    .update_xy_en(update_xy_en),
 
     // Outputs to countrol
-      .bullet_flying(bullet_flying),
-      .plot_player_done(plot_player_done),
-      .plot_aliens_done(plot_aliens_done),
-      .plot_bullet_done(plot_bullet_done),
-      .next_move(next_move),
-      .clear_done(clear_done),
-      .update_xy_done(update_xy_done),
+    .bullet_flying(bullet_flying),
+    .plot_player_done(plot_player_done),
+    .plot_aliens_done(plot_aliens_done),
+    .plot_bullet_done(plot_bullet_done),
+    .next_move(next_move),
+    .clear_done(clear_done),
+    .update_xy_done(update_xy_done),
 
     // Outputs to VGA
-      .x_out(x),
-      .y_out(y),
-      .colour_out(colour),
-      .wren(writeEn)
-  );
+    .x_out(x),
+    .y_out(y),
+    .colour_out(colour),
+    .wren(writeEn)
+    );
 
 endmodule
 
@@ -556,10 +556,10 @@ module alien(
     else begin
       if ((x == r_border) && (x_offset == 2'b01)) begin // left btn pressed
         x_offset <= 2'b11; // offset = -1
-		  y <= y + 1; // move the alien down
+	y <= y + 1; // move the alien down
       end else if ((x == l_border) && (x_offset == 2'b11)) begin // right btn pressed
         x_offset <= 2'b01; // offset = 1
-		  y <= y + 1; //move alien down
+	y <= y + 1; //move alien down
       end else begin
         x_offset <= x_offset;
       end
@@ -573,7 +573,6 @@ module alien(
 
       offset_done <= 1'b1;
     end
-
   end
 endmodule
 
@@ -668,11 +667,8 @@ module bullet(
       
       offset_done <= 1'b1;
     end
-
   end
 endmodule
-
-
 
 // generate 60 Hz from 50 MHz
 module DelayCounter(clk_50mhz,rst,en,clk_60hz_out,pixrate_4_out,pixrate_6_out,pixrate_10_out);
