@@ -496,13 +496,14 @@ module datapath(
 	end
 
 	// S_WAIT_PLOT
-	// Wait for the pixrate_4_out come high for the first time
-	// Because it's the slowest rate divider, and if it's 1,
-	// all of the objects have been offset
-	if (pixrate_4_out && !on_next_move) begin
-	  on_next_move <= 1'b1;
-	  next_move <= 1'b1;
-	end else if (!pixrate_4_out) begin
+	// This logic ensures that control only goes to plot state when
+	// any of the rate divider turns to high for the FIRST time.
+	if (pixrate_4_out || pixrate_6_out || pixrate_10_out) begin
+	  if (!on_next_move) begin
+	    next_move <= 1'b1;
+	    on_next_move <= 1'b1;
+	  end
+	end begin
 	  on_next_move <= 0;
 	end
 
