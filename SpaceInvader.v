@@ -377,7 +377,7 @@ module datapath(
     player Player(
       .clk(clk),
       .resetn(resetn),
-      .update_xy_en(pixrate_6_out),
+      .update_xy_en(pixrate_6_out && update_xy_en),
       .btn_left(btn_left),
       .btn_right(btn_right),
       .x(player_x),
@@ -388,7 +388,7 @@ module datapath(
 	 alien Alien1(
 		.clk(clk),
       .resetn(resetn),
-      .update_xy_en(pixrate_4_out),
+      .update_xy_en(pixrate_4_out && update_xy_en),
 		.l_border(l_alien_col1),
 		.r_border(r_alien_col1),
       .x(alien1_x),
@@ -400,7 +400,7 @@ module datapath(
 	 alien Alien2(
 		.clk(clk),
       .resetn(resetn),
-      .update_xy_en(pixrate_4_out),
+      .update_xy_en(pixrate_4_out && update_xy_en),
 		.l_border(l_alien_col2),
 		.r_border(r_alien_col2),
       .x(alien2_x),
@@ -412,7 +412,7 @@ module datapath(
 	 alien Alien3(
 		.clk(clk),
       .resetn(resetn),
-      .update_xy_en(pixrate_4_out),
+      .update_xy_en(pixrate_4_out && update_xy_en),
 		.l_border(l_alien_col3),
 		.r_border(r_alien_col3),
       .x(alien3_x),
@@ -425,7 +425,7 @@ module datapath(
 		.clk(clk),
       .resetn(resetn),
 		.playerXPos(cur_player_x),
-      .update_xy_en(pixrate_10_out),
+      .update_xy_en(pixrate_10_out && update_xy_en),
 		.btn_fire(btn_fire),
       .x(bullet_x),
       .y(bullet_y),
