@@ -543,36 +543,62 @@ module alien(
   );
 
   reg [1:0] x_offset;
+  // x,y are the coordinates of the entire object
+  // cur_x,cur_y are the coordinates of the next pixel of the object to plot
+  reg [7:0] cur_x;
+  reg [6:0] cur_y;
 
   always @(posedge clk) begin
     offset_done <= 0;
 
     if (!resetn) begin
-      // starting position of player
+      // starting position of alien
       x_offset <= 2'b01;
       x <= l_border;
       y <= 7'd15;
+      cur_x <= l_border;
+      cur_y <= 7'd15;
       offset_done <= 0;
     end
     else begin
-      if ((x == r_border) && (x_offset == 2'b01)) begin // left btn pressed
-        x_offset <= 2'b11; // offset = -1
-	y <= y + 1; // move the alien down
-      end else if ((x == l_border) && (x_offset == 2'b11)) begin // right btn pressed
-        x_offset <= 2'b01; // offset = 1
-	y <= y + 1; //move alien down
-      end else begin
-        x_offset <= x_offset;
+      // It we finished plotting the entire object(a 3x3 box)
+      if (cur_x == (x + 3) && cur_y == (y + 3)) begin
+	// Go ahead to offset the coordinates of the entire object
+	if ((x == (r_border - 3)) && (x_offset == 2'b01)) begin
+	  x_offset <= 2'b11; // offset = -1
+	  cur_y <= y + 1; // move the alien down
+	  y <= y + 1; // move the alien down
+	end else if ((x == l_border) && (x_offset == 2'b11)) begin
+	  x_offset <= 2'b01; // offset = 1
+	  cur_y <= y + 1; //move alien down
+	  y <= y + 1; //move alien down
+	end else begin
+	  x_offset <= x_offset;
+	end
+	
+	if (update_xy_en) begin
+	  if (x_offset == 2'b01) begin
+	    cur_x <= x + 1; //move the alien right
+	    x <= x + 1; //move the alien right
+	  end else if (x_offset == 2'b11) begin
+	    cur_x <= x - 1; //move the alien left
+	    x <= x - 1; //move the alien left
+	  end
+	end
+	
+	// Now it's ok to move on to the next object
+	offset_done <= 1'b1;
+      end 
+      else begin
+	// Keep on plotting this object
+	if (cur_x == (x + 3) && cur_y < (y + 3)) begin
+	  cur_x <= x;
+	  cur_y <= cur_y + 1;
+	end else if (cur_x < (x + 3)) begin
+	  cur_x <= cur_x + 1;
+	end
       end
-
-      if (update_xy_en) begin
-        if (x_offset == 2'b01)
-          x <= x + 1;
-        else if (x_offset == 2'b11)
-          x <= x - 1;
-      end
-
-      offset_done <= 1'b1;
+    
     end
   end
 endmodule
