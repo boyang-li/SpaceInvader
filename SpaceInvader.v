@@ -80,6 +80,7 @@ module SpaceInvader(
   // Game logic
   wire bullet_flying,plot_player_done,plot_aliens_done,plot_bullet_done, plot_a1bullet_done,next_move,clear_done,update_xy_done;
   wire check_p_hit_en,check_a_hit_en;
+  wire [3:0] player_lives;
   wire player_hit,aliens_eliminated;
   wire in_game,rst_xy,plot_player_en,plot_bullet_en, plot_a1bullet_en,rst_delay_en,clear_en,update_xy_en;
   
@@ -95,6 +96,7 @@ module SpaceInvader(
     // Datapath signals
     .bullet_flying(bullet_flying),
     .player_hit(player_hit),
+    .player_lives(player_lives),
     .aliens_eliminated(aliens_eliminated),
     .plot_player_done(plot_player_done),
     .plot_aliens_done(plot_aliens_done),
@@ -151,6 +153,7 @@ module SpaceInvader(
     // Outputs to countrol
     .bullet_flying(bullet_flying),
     .player_hit(player_hit),
+    .player_lives(player_lives),
     .aliens_eliminated(aliens_eliminated),
     .plot_player_done(plot_player_done),
     .plot_aliens_done(plot_aliens_done),
@@ -166,6 +169,12 @@ module SpaceInvader(
     .colour_out(colour),
     .wren(writeEn)
   );
+  
+  // score and player lives
+  hex_7seg dsp6(player_lives[3:0],HEX6); // player lives
+  hex_7seg dsp7(history[4][7:4],HEX7);
+  
+  
   
   // Keyboard Begin----------------------------------------
   wire [7:0] scan_code;
@@ -198,8 +207,8 @@ module SpaceInvader(
   hex_7seg dsp4(history[3][3:0],HEX4);
   hex_7seg dsp5(history[3][7:4],HEX5);
 
-  hex_7seg dsp6(history[4][3:0],HEX6);
-  hex_7seg dsp7(history[4][7:4],HEX7);
+  //hex_7seg dsp6(history[4][3:0],HEX6);
+  //hex_7seg dsp7(history[4][7:4],HEX7);
   
   always @(posedge scan_ready)
   begin
@@ -230,6 +239,7 @@ module control(
   // Datapath signals
   input bullet_flying,
   input player_hit,
+  input [1:0] player_lives,
   input aliens_eliminated,
   input plot_player_done,
   input plot_aliens_done,
@@ -277,7 +287,9 @@ module control(
               S_RST_DELAY    = 5'd12,
               S_WAIT_PLOT    = 5'd13,
               S_CLEAR_SCREEN = 5'd14,
-              S_UPDATE_XY    = 5'd15;
+              S_UPDATE_XY    = 5'd15,
+	      S_CHECK_LIVES  = 5'd16;
+          
 
   // Next state logic aka our state table
   always @(posedge clk)
@@ -286,7 +298,8 @@ module control(
       S_IDLE:         next_state <= (go) ? S_RST_ALL : S_IDLE;
       S_RST_ALL:      next_state <= S_CYCLE_BEGIN;
       S_CYCLE_BEGIN:  next_state <= S_CHECK_P_HIT;
-      S_CHECK_P_HIT:  next_state <= (player_hit) ? S_IDLE : S_CHECK_A_HIT;
+      S_CHECK_P_HIT:  next_state <= (player_hit) ? S_CHECK_LIVES : S_CHECK_A_HIT;
+      S_CHECK_LIVES:  next_state <= (player_lives > 0) ? S_CHECK_A_HIT : S_IDLEl;
       S_CHECK_A_HIT:  next_state <= (aliens_eliminated) ? S_IDLE : S_PLOT_PLAYER;
       S_PLOT_PLAYER:  next_state <= (plot_player_done) ? S_PLOT_ALIEN1 : S_PLOT_PLAYER;
       S_PLOT_ALIEN1:  next_state <= (plot_aliens_done) ? S_PLOT_ALIEN2 : S_PLOT_ALIEN1;
@@ -406,6 +419,7 @@ module datapath(
     // Outputs to countrol
     output reg bullet_flying,
 	 output reg player_hit,
+	 output reg [3:0] player_lives,
 	 output reg aliens_eliminated,
     output reg plot_player_done,
     output reg plot_aliens_done,
@@ -414,7 +428,10 @@ module datapath(
     output reg next_move,
     output reg clear_done,
     output reg update_xy_done,
-
+    
+    // player score
+    output reg [3:0] player_score,
+    
     // Outputs to VGA
     output reg [7:0] x_out,
     output reg [6:0] y_out,
@@ -589,8 +606,9 @@ module datapath(
         wren <= 0;
 
         // Outputs to control
-		  player_hit <= 0;
-		  aliens_eliminated <= 0;
+	player_hit <= 0;
+	player_lives <= 4'd3;
+	aliens_eliminated <= 0;
         plot_player_done <= 0;
         plot_aliens_done <= 0;
         plot_bullet_done <= 0;
@@ -607,6 +625,7 @@ module datapath(
 		  alien1_hit <= 0;
 		  alien2_hit <= 0;
 		  alien3_hit <= 0;
+		  player_score<= 0;
 
       end // End if (!resetn)
       else if (in_game) begin
@@ -614,21 +633,23 @@ module datapath(
         //
       end
 		if (check_p_hit_en) begin
-			// TODO: make aliens able to shoot bullets
-			//if (bullet_x == cur_player_x && bullet_y == 7'd111) begin
-				// player is hit
-				//player_hit <= 1'b1;
-			//end
+			if (a1bullet_x == player_x && a1bullet_y == player_y) begin
+				player_hit <= 1'b1;
+				player_lives <= player_lives - 4'd1;
+			end	
 		end
 		if (check_a_hit_en) begin
 			if (bullet_x == alien1_x && bullet_y == alien1_y) begin
 				alien1_hit <= 1'b1;
+				player_score <= player_score + 4'd3;
 			end
 			else if (bullet_x == alien2_x && bullet_y == alien2_y) begin
 				alien2_hit <= 1'b1;
+				player_score <= player_score + 4'd1;
 			end
 			else if (bullet_x == alien3_x && bullet_y == alien3_y) begin
 				alien3_hit <= 1'b1;
+				player_score <= player_score + 4'd1;
 			end
 			
 			if (alien1_hit && alien2_hit && alien3_hit) begin
@@ -643,7 +664,7 @@ module datapath(
         wren <= 1'b1;
         plot_player_done <= plot_player_finish;
       end else if (plot_alien1_en) begin
-		  x_out <= alien1_x;
+	x_out <= alien1_x;
         y_out <= alien1_y;
 		  cur_alien1_x <= alien1_x;
 		  if (alien1_hit) begin
