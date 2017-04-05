@@ -687,7 +687,7 @@ module datapath(
 		  y_out <= a1bullet_y;
 		  colour_out <= 3'b111;
 		  wren <= 1'b1;	  
-		  plot_bullet_done <= a1_bullet_offset_done;
+		  plot_a1bullet_done <= a1_bullet_offset_done;
 		end
 		
 
@@ -1059,4 +1059,4 @@ module hex_7seg(hex_digit,seg);
 		  4'hf: seg = 7'b0001110;
   endcase
 
-endmodule
+endmodule 

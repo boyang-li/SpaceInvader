@@ -6,10 +6,10 @@ module SpaceInvader(
    KEY,
    SW,
   //  7-SEG Displays
-  HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7,
+  output  [6:0]  HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7,
   //  PS2 data and clock lines		
-  PS2_DAT,
-  PS2_CLK,
+  input	PS2_DAT,
+  input	PS2_CLK,
   // The ports below are for the VGA output.  Do not change.
   VGA_CLK,              //  VGA Clock
   VGA_HS,             //  VGA H_SYNC
@@ -26,11 +26,6 @@ module SpaceInvader(
   input   [3:0]   KEY;
 
   // Declare your inputs and outputs here
-  input	PS2_DAT;
-  input	PS2_CLK;
-  
-  output  [6:0]  HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7;
-  
   // Do not change the following outputs
   output    VGA_CLK;          //  VGA Clock
   output    VGA_HS;         //  VGA H_SYNC
@@ -215,7 +210,16 @@ module SpaceInvader(
       .wren(writeEn)
   );
   
-
+  
+  keyboard kbd(
+    .keyboard_clk(PS2_CLK),
+    .keyboard_data(PS2_DAT),
+    .clock50(CLOCK_50),
+    .reset(reset),
+    .read(read),
+    .scan_ready(scan_ready),
+    .scan_code(scan_code)
+  );
 endmodule
 
 // FSM
@@ -529,7 +533,7 @@ module datapath(
   bullet PlayerBullet(
 		.clk(clk),
       .resetn(resetn),
-		.offset(2'b11),
+		.offest(2'b11),
 		.playerXPos(cur_player_x),
       .update_xy_en(update_xy_en),
 		.btn_fire(btn_fire),
@@ -545,13 +549,13 @@ module datapath(
 	 bullet Alien1Bullet(
       .clk(clk),
       .resetn(resetn),
-		.offset(2'b01),
+		.offest(2'b01),
       .playerXPos(cur_alien1_x),
       .update_xy_en(update_xy_en),
       .btn_fire(a1_fire_ready),
       .x(a1bullet_x),
       .y(a1bullet_y),
-      .bullet_flying(a1bullet_flying_Wire),
+      .a1bullet_flying(a1bullet_flying_Wire),
       .plot_finish(a1_bullet_offset_done)
       );
 	
@@ -683,7 +687,7 @@ module datapath(
 		  y_out <= a1bullet_y;
 		  colour_out <= 3'b111;
 		  wren <= 1'b1;	  
-		  plot_bullet_done <= a1_bullet_offset_done;
+		  plot_a1bullet_done <= a1_bullet_offset_done;
 		end
 		
 
@@ -1055,4 +1059,4 @@ module hex_7seg(hex_digit,seg);
 		  4'hf: seg = 7'b0001110;
   endcase
 
-endmodule
+endmodule 
