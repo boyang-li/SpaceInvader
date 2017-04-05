@@ -77,6 +77,96 @@ module SpaceInvader(
   wire go;
   assign go = SW[0];
   
+  // Game logic
+  wire bullet_flying,plot_player_done,plot_aliens_done,plot_bullet_done, plot_a1bullet_done,next_move,clear_done,update_xy_done;
+  wire check_p_hit_en,check_a_hit_en;
+  wire player_hit,aliens_eliminated;
+  wire in_game,rst_xy,plot_player_en,plot_bullet_en, plot_a1bullet_en,rst_delay_en,clear_en,update_xy_en;
+  
+  wire plot_alien1_en, plot_alien2_en, plot_alien3_en;
+
+  wire [4:0] current_state,next_state;
+
+  control c0(
+    .clk(CLOCK_50),
+    .resetn(resetn),
+    .go(go),
+
+    // Datapath signals
+    .bullet_flying(bullet_flying),
+    .player_hit(player_hit),
+    .aliens_eliminated(aliens_eliminated),
+    .plot_player_done(plot_player_done),
+    .plot_aliens_done(plot_aliens_done),
+    .plot_bullet_done(plot_bullet_done),
+    .plot_a1bullet_done(plot_a1bullet_done),
+    .next_move(next_move),
+    .clear_done(clear_done),
+    .update_xy_done(update_xy_done),
+
+    // Outputs to datapath
+    .in_game(in_game),
+    .rst_xy(rst_xy),
+    .check_p_hit_en(check_p_hit_en),
+    .check_a_hit_en(check_a_hit_en),
+    .plot_player_en(plot_player_en),
+    .plot_alien1_en(plot_alien1_en),
+    .plot_alien2_en(plot_alien2_en),
+    .plot_alien3_en(plot_alien3_en),
+    .plot_bullet_en(plot_bullet_en),
+    .plot_a1bullet_en(plot_a1bullet_en),
+    .rst_delay_en(rst_delay_en),
+    .clear_en(clear_en),
+    .update_xy_en(update_xy_en),
+
+    // for test
+    .current_state(current_state),
+    .next_state(next_state)
+    );
+
+  datapath dp0(
+    // Top level inputs
+    .clk(CLOCK_50),
+    .resetn(resetn),
+    .btn_left(KEY[3]),
+    .btn_right(KEY[2]),
+    .btn_fire(~KEY[1]),
+    //input [2:0] colour_in,
+
+    // Control signals
+    .in_game(in_game),
+    .rst_xy(rst_xy),
+    .check_p_hit_en(check_p_hit_en),
+    .check_a_hit_en(check_a_hit_en),
+    .plot_player_en(plot_player_en),
+    .plot_alien1_en(plot_alien1_en),
+    .plot_alien2_en(plot_alien2_en),
+    .plot_alien3_en(plot_alien3_en),
+    .plot_bullet_en(plot_bullet_en),
+    .plot_a1bullet_en(plot_a1bullet_en),
+    .rst_delay_en(rst_delay_en),
+    .clear_en(clear_en),
+    .update_xy_en(update_xy_en),
+
+    // Outputs to countrol
+    .bullet_flying(bullet_flying),
+    .player_hit(player_hit),
+    .aliens_eliminated(aliens_eliminated),
+    .plot_player_done(plot_player_done),
+    .plot_aliens_done(plot_aliens_done),
+    .plot_bullet_done(plot_bullet_done),
+    .plot_a1bullet_done(plot_a1bullet_done),
+    .next_move(next_move),
+    .clear_done(clear_done),
+    .update_xy_done(update_xy_done),
+
+    // Outputs to VGA
+    .x_out(x),
+    .y_out(y),
+    .colour_out(colour),
+    .wren(writeEn)
+  );
+  
   // Keyboard Begin----------------------------------------
   wire [7:0] scan_code;
   reg [7:0] history[1:4];
@@ -118,98 +208,6 @@ module SpaceInvader(
     history[2] <= history[1];
     history[1] <= scan_code;
   end
-  // Keyboard End----------------------------------------
-  
-  // Game logic
-  wire bullet_flying,plot_player_done,plot_aliens_done,plot_bullet_done, plot_a1bullet_done,next_move,clear_done,update_xy_done;
-  wire check_p_hit_en,check_a_hit_en;
-  wire player_hit,aliens_eliminated;
-  wire in_game,rst_xy,plot_player_en,plot_bullet_en, plot_a1bullet_en,rst_delay_en,clear_en,update_xy_en;
-  
-  wire plot_alien1_en, plot_alien2_en, plot_alien3_en;
-
-  wire [4:0] current_state,next_state;
-
-  control c0(
-    .clk(CLOCK_50),
-    .resetn(resetn),
-    .go(go),
-
-    // Datapath signals
-    .bullet_flying(bullet_flying),
-	 .player_hit(player_hit),
-	 .aliens_eliminated(aliens_eliminated),
-    .plot_player_done(plot_player_done),
-    .plot_aliens_done(plot_aliens_done),
-    .plot_bullet_done(plot_bullet_done),
-	 .plot_a1bullet_done(plot_a1bullet_done),
-    .next_move(next_move),
-    .clear_done(clear_done),
-    .update_xy_done(update_xy_done),
-
-    // Outputs to datapath
-    .in_game(in_game),
-    .rst_xy(rst_xy),
-	 .check_p_hit_en(check_p_hit_en),
-	 .check_a_hit_en(check_a_hit_en),
-    .plot_player_en(plot_player_en),
-      .plot_alien1_en(plot_alien1_en),
-		.plot_alien2_en(plot_alien2_en),
-		.plot_alien3_en(plot_alien3_en),
-      .plot_bullet_en(plot_bullet_en),
-		.plot_a1bullet_en(plot_a1bullet_en),
-      .rst_delay_en(rst_delay_en),
-      .clear_en(clear_en),
-      .update_xy_en(update_xy_en),
-
-    // for test
-    .current_state(current_state),
-    .next_state(next_state)
-    );
-
-  datapath dp0(
-    // Top level inputs
-    .clk(CLOCK_50),
-    .resetn(resetn),
-    .btn_left(KEY[3]),
-    .btn_right(KEY[2]),
-    .btn_fire(~KEY[1]),
-    //input [2:0] colour_in,
-
-    // Control signals
-    .in_game(in_game),
-      .rst_xy(rst_xy),
-		.check_p_hit_en(check_p_hit_en),
-		.check_a_hit_en(check_a_hit_en),
-      .plot_player_en(plot_player_en),
-      .plot_alien1_en(plot_alien1_en),
-		.plot_alien2_en(plot_alien2_en),
-		.plot_alien3_en(plot_alien3_en),
-      .plot_bullet_en(plot_bullet_en),
-		.plot_a1bullet_en(plot_a1bullet_en),
-      .rst_delay_en(rst_delay_en),
-      .clear_en(clear_en),
-      .update_xy_en(update_xy_en),
-
-    // Outputs to countrol
-      .bullet_flying(bullet_flying),
-		.player_hit(player_hit),
-		.aliens_eliminated(aliens_eliminated),
-      .plot_player_done(plot_player_done),
-      .plot_aliens_done(plot_aliens_done),
-      .plot_bullet_done(plot_bullet_done),
-		.plot_a1bullet_done(plot_a1bullet_done),
-      .next_move(next_move),
-      .clear_done(clear_done),
-      .update_xy_done(update_xy_done),
-
-    // Outputs to VGA
-      .x_out(x),
-      .y_out(y),
-      .colour_out(colour),
-      .wren(writeEn)
-  );
-  
   
   keyboard kbd(
     .keyboard_clk(PS2_CLK),
@@ -220,6 +218,8 @@ module SpaceInvader(
     .scan_ready(scan_ready),
     .scan_code(scan_code)
   );
+  // Keyboard End----------------------------------------
+  
 endmodule
 
 // FSM
@@ -264,16 +264,16 @@ module control(
   localparam  S_IDLE         = 5'd0,
               S_RST_ALL      = 5'd1,
               S_CYCLE_BEGIN  = 5'd2,
-				  S_CHECK_P_HIT  = 5'd3,
-				  S_CHECK_A_HIT  = 5'd4,
+	      S_CHECK_P_HIT  = 5'd3,
+	      S_CHECK_A_HIT  = 5'd4,
               S_PLOT_PLAYER  = 5'd5,
               S_PLOT_ALIEN1  = 5'd6,
-				  S_PLOT_ALIEN2  = 5'd7,
-				  S_PLOT_ALIEN3  = 5'd8,
-				  //add more aliens below if needed
+	      S_PLOT_ALIEN2  = 5'd7,
+	      S_PLOT_ALIEN3  = 5'd8,
+	      //add more aliens below if needed
               S_CHECK_SHOT   = 5'd9,
               S_PLOT_BULLET  = 5'd10,
-				  S_PLOT_A1BULLET= 5'd11,
+	      S_PLOT_A1BULLET= 5'd11,
               S_RST_DELAY    = 5'd12,
               S_WAIT_PLOT    = 5'd13,
               S_CLEAR_SCREEN = 5'd14,
@@ -286,15 +286,15 @@ module control(
       S_IDLE:         next_state <= (go) ? S_RST_ALL : S_IDLE;
       S_RST_ALL:      next_state <= S_CYCLE_BEGIN;
       S_CYCLE_BEGIN:  next_state <= S_CHECK_P_HIT;
-		S_CHECK_P_HIT:  next_state <= (player_hit) ? S_IDLE : S_CHECK_A_HIT;
-		S_CHECK_A_HIT:  next_state <= (aliens_eliminated) ? S_IDLE : S_PLOT_PLAYER;
+      S_CHECK_P_HIT:  next_state <= (player_hit) ? S_IDLE : S_CHECK_A_HIT;
+      S_CHECK_A_HIT:  next_state <= (aliens_eliminated) ? S_IDLE : S_PLOT_PLAYER;
       S_PLOT_PLAYER:  next_state <= (plot_player_done) ? S_PLOT_ALIEN1 : S_PLOT_PLAYER;
       S_PLOT_ALIEN1:  next_state <= (plot_aliens_done) ? S_PLOT_ALIEN2 : S_PLOT_ALIEN1;
-		S_PLOT_ALIEN2:  next_state <= (plot_aliens_done) ? S_PLOT_ALIEN3 : S_PLOT_ALIEN2;
-		S_PLOT_ALIEN3:  next_state <= (plot_aliens_done) ? S_CHECK_SHOT : S_PLOT_ALIEN3;
+      S_PLOT_ALIEN2:  next_state <= (plot_aliens_done) ? S_PLOT_ALIEN3 : S_PLOT_ALIEN2;
+      S_PLOT_ALIEN3:  next_state <= (plot_aliens_done) ? S_CHECK_SHOT : S_PLOT_ALIEN3;
       S_CHECK_SHOT:   next_state <= (bullet_flying) ? S_PLOT_BULLET : S_RST_DELAY;
       S_PLOT_BULLET:  next_state <= (plot_bullet_done) ? S_PLOT_A1BULLET : S_PLOT_BULLET;
-		S_PLOT_A1BULLET:next_state <= (plot_a1bullet_done) ? S_RST_DELAY : S_PLOT_A1BULLET;
+      S_PLOT_A1BULLET:next_state <= (plot_a1bullet_done) ? S_RST_DELAY : S_PLOT_A1BULLET;
       S_RST_DELAY:    next_state <= S_WAIT_PLOT;
       S_WAIT_PLOT:    next_state <= (next_move) ? S_CLEAR_SCREEN : S_WAIT_PLOT;
       S_CLEAR_SCREEN: next_state <= (clear_done) ? S_UPDATE_XY : S_CLEAR_SCREEN;
@@ -317,14 +317,14 @@ module control(
   begin: enable_signals
     // By defaults...
     rst_xy         <= 1'b0;
-	 check_p_hit_en <= 1'b0;
-	 check_a_hit_en <= 1'b0;
+    check_p_hit_en <= 1'b0;
+    check_a_hit_en <= 1'b0;
     plot_player_en <= 1'b0;
     plot_alien1_en <= 1'b0;
-	 plot_alien2_en <= 1'b0;
-	 plot_alien3_en <= 1'b0;
+    plot_alien2_en <= 1'b0;
+    plot_alien3_en <= 1'b0;
     plot_bullet_en <= 1'b0;
-	 plot_a1bullet_en <= 1'b0;
+    plot_a1bullet_en <= 1'b0;
     rst_delay_en   <= 1'b0;
     clear_en       <= 1'b0;
     update_xy_en   <= 1'b0;
