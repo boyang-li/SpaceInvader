@@ -551,7 +551,7 @@ module alien(
   always @(posedge clk) begin
     offset_done <= 0;
 
-    if (!resetn) begin
+    if (!resetn) begin // reset begin
       // starting position of alien
       x_offset <= 2'b01;
       x <= l_border;
@@ -559,10 +559,10 @@ module alien(
       cur_x <= l_border;
       cur_y <= 7'd15;
       offset_done <= 0;
-    end
-    else begin
+    end // reset ends
+    else begin // body begin
       // It we finished plotting the entire object(a 3x3 box)
-      if (cur_x == (x + 3) && cur_y == (y + 3)) begin
+      if (cur_x == (x + 3) && cur_y == (y + 3)) begin // finish object plot
 	// Go ahead to offset the coordinates of the entire object
 	if ((x == (r_border - 3)) && (x_offset == 2'b01)) begin
 	  x_offset <= 2'b11; // offset = -1
@@ -588,8 +588,8 @@ module alien(
 	
 	// Now it's ok to move on to the next object
 	offset_done <= 1'b1;
-      end 
-      else begin
+      end // finish object plot
+      else begin // in object plot
 	// Keep on plotting this object
 	if (cur_x == (x + 3) && cur_y < (y + 3)) begin
 	  cur_x <= x;
@@ -597,10 +597,10 @@ module alien(
 	end else if (cur_x < (x + 3)) begin
 	  cur_x <= cur_x + 1;
 	end
-      end
+      end // in object plot
     
-    end
-  end
+    end // body ends
+  end // always ends
 endmodule
 
 module player(
