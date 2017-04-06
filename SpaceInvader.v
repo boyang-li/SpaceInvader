@@ -6,10 +6,10 @@ module SpaceInvader(
    KEY,
    SW,
   //  7-SEG Displays
-  output  [6:0]  HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7,
+	HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7,
   //  PS2 data and clock lines		
-  input	PS2_DAT,
-  input	PS2_CLK,
+  	PS2_DAT,
+   PS2_CLK,
   // The ports below are for the VGA output.  Do not change.
   VGA_CLK,              //  VGA Clock
   VGA_HS,             //  VGA H_SYNC
@@ -24,6 +24,9 @@ module SpaceInvader(
   input   CLOCK_50;       //  50 MHz
   input   [9:0]   SW;
   input   [3:0]   KEY;
+  input	PS2_DAT;
+  input	PS2_CLK;
+  output  [6:0]  HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7;
 
   // Declare your inputs and outputs here
   // Do not change the following outputs
@@ -78,9 +81,9 @@ module SpaceInvader(
   assign go = SW[0];
   
   // Game logic
-  wire bullet_flying,plot_player_done,plot_aliens_done,plot_bullet_done, plot_a1bullet_done,next_move,clear_done,update_xy_done;
-  wire check_p_hit_en,check_a_hit_en;
-  wire [3:0] player_lives;
+  wire bullet_flying, a1bullet_flying,plot_player_done,plot_aliens_done,plot_bullet_done, plot_a1bullet_done,next_move,clear_done,update_xy_done;
+  wire check_p_hit_en,check_a_hit_en,check_lives_en;
+  wire [3:0] player_lives, player_score;
   wire player_hit,aliens_eliminated;
   wire in_game,rst_xy,plot_player_en,plot_bullet_en, plot_a1bullet_en,rst_delay_en,clear_en,update_xy_en;
   
@@ -95,6 +98,7 @@ module SpaceInvader(
 
     // Datapath signals
     .bullet_flying(bullet_flying),
+	 .a1bullet_flying(a1bullet_flying),
     .player_hit(player_hit),
     .player_lives(player_lives),
     .aliens_eliminated(aliens_eliminated),
@@ -110,6 +114,7 @@ module SpaceInvader(
     .in_game(in_game),
     .rst_xy(rst_xy),
     .check_p_hit_en(check_p_hit_en),
+	 .check_lives_en(check_lives_en),
     .check_a_hit_en(check_a_hit_en),
     .plot_player_en(plot_player_en),
     .plot_alien1_en(plot_alien1_en),
@@ -139,6 +144,7 @@ module SpaceInvader(
     .in_game(in_game),
     .rst_xy(rst_xy),
     .check_p_hit_en(check_p_hit_en),
+	 .check_lives_en(check_lives_en),
     .check_a_hit_en(check_a_hit_en),
     .plot_player_en(plot_player_en),
     .plot_alien1_en(plot_alien1_en),
@@ -152,6 +158,7 @@ module SpaceInvader(
 
     // Outputs to countrol
     .bullet_flying(bullet_flying),
+	 .a1bullet_flying(a1bullet_flying),
     .player_hit(player_hit),
     .player_lives(player_lives),
     .aliens_eliminated(aliens_eliminated),
@@ -171,9 +178,15 @@ module SpaceInvader(
   );
   
   // score and player lives
-  hex_7seg dsp6(player_lives[3:0],HEX6); // player lives
-  hex_7seg dsp7(history[4][7:4],HEX7);
-  
+   hex_decoder H0(
+        .hex_digit(player_lives[3:0]), 
+        .segments(HEX0)
+        );
+        
+    hex_decoder H1(
+        .hex_digit(player_score[3:0]), 
+        .segments(HEX1)
+        );
   
   
   // Keyboard Begin----------------------------------------
@@ -187,25 +200,15 @@ module SpaceInvader(
     .clk(CLOCK_50)
   );
   
-  keyboard kbd(
-    .keyboard_clk(PS2_CLK),
-    .keyboard_data(PS2_DAT),
-    .clock50(CLOCK_50),
-    .resetn(resetn),
-    .read(read),
-    .scan_ready(scan_ready),
-    .scan_code(scan_code)
-  );
-  
   // Output keyboard inputs to hex displays
-  hex_7seg dsp0(history[1][3:0],HEX0);
-  hex_7seg dsp1(history[1][7:4],HEX1);
+  //hex_7seg dsp0(history[1][3:0],HEX0);
+  //hex_7seg dsp1(history[1][7:4],HEX1);
 
-  hex_7seg dsp2(history[2][3:0],HEX2);
-  hex_7seg dsp3(history[2][7:4],HEX3);
+  //hex_7seg dsp2(history[2][3:0],HEX2);
+  //hex_7seg dsp3(history[2][7:4],HEX3);
 
-  hex_7seg dsp4(history[3][3:0],HEX4);
-  hex_7seg dsp5(history[3][7:4],HEX5);
+  //hex_7seg dsp4(history[3][3:0],HEX4);
+  //hex_7seg dsp5(history[3][7:4],HEX5);
 
   //hex_7seg dsp6(history[4][3:0],HEX6);
   //hex_7seg dsp7(history[4][7:4],HEX7);
@@ -222,7 +225,7 @@ module SpaceInvader(
     .keyboard_clk(PS2_CLK),
     .keyboard_data(PS2_DAT),
     .clock50(CLOCK_50),
-    .reset(reset),
+    .resetn(reset),
     .read(read),
     .scan_ready(scan_ready),
     .scan_code(scan_code)
@@ -238,6 +241,7 @@ module control(
 
   // Datapath signals
   input bullet_flying,
+  input a1bullet_flying,
   input player_hit,
   input [1:0] player_lives,
   input aliens_eliminated,
@@ -253,6 +257,7 @@ module control(
   output reg in_game,
   output reg rst_xy,
   output reg check_p_hit_en,
+  output reg check_lives_en,
   output reg check_a_hit_en,
   output reg plot_player_en,
   output reg plot_alien1_en,
@@ -288,7 +293,8 @@ module control(
               S_WAIT_PLOT    = 5'd13,
               S_CLEAR_SCREEN = 5'd14,
               S_UPDATE_XY    = 5'd15,
-	      S_CHECK_LIVES  = 5'd16;
+	      S_CHECK_LIVES  = 5'd16,
+			S_CHECK_a1SHOT = 5'd17;
           
 
   // Next state logic aka our state table
@@ -296,17 +302,20 @@ module control(
   begin: state_table
     case (current_state)
       S_IDLE:         next_state <= (go) ? S_RST_ALL : S_IDLE;
-      S_RST_ALL:      next_state <= S_CYCLE_BEGIN;
+      S_RST_ALL:      next_state <= (clear_done) ? S_CYCLE_BEGIN : S_RST_ALL;
       S_CYCLE_BEGIN:  next_state <= S_CHECK_P_HIT;
       S_CHECK_P_HIT:  next_state <= (player_hit) ? S_CHECK_LIVES : S_CHECK_A_HIT;
-      S_CHECK_LIVES:  next_state <= (player_lives > 0) ? S_CHECK_A_HIT : S_IDLEl;
+      S_CHECK_LIVES:  next_state <= (player_lives == 4'd16) ? S_IDLE : S_CHECK_A_HIT;
       S_CHECK_A_HIT:  next_state <= (aliens_eliminated) ? S_IDLE : S_PLOT_PLAYER;
       S_PLOT_PLAYER:  next_state <= (plot_player_done) ? S_PLOT_ALIEN1 : S_PLOT_PLAYER;
       S_PLOT_ALIEN1:  next_state <= (plot_aliens_done) ? S_PLOT_ALIEN2 : S_PLOT_ALIEN1;
       S_PLOT_ALIEN2:  next_state <= (plot_aliens_done) ? S_PLOT_ALIEN3 : S_PLOT_ALIEN2;
       S_PLOT_ALIEN3:  next_state <= (plot_aliens_done) ? S_CHECK_SHOT : S_PLOT_ALIEN3;
-      S_CHECK_SHOT:   next_state <= (bullet_flying) ? S_PLOT_BULLET : S_RST_DELAY;
+		
+      S_CHECK_SHOT:   next_state <= (bullet_flying) ? S_PLOT_BULLET : S_CHECK_a1SHOT;
       S_PLOT_BULLET:  next_state <= (plot_bullet_done) ? S_PLOT_A1BULLET : S_PLOT_BULLET;
+		
+		S_CHECK_a1SHOT: next_state <= (a1bullet_flying) ? S_PLOT_A1BULLET : S_RST_DELAY;
       S_PLOT_A1BULLET:next_state <= (plot_a1bullet_done) ? S_RST_DELAY : S_PLOT_A1BULLET;
       S_RST_DELAY:    next_state <= S_WAIT_PLOT;
       S_WAIT_PLOT:    next_state <= (next_move) ? S_CLEAR_SCREEN : S_WAIT_PLOT;
@@ -331,6 +340,7 @@ module control(
     // By defaults...
     rst_xy         <= 1'b0;
     check_p_hit_en <= 1'b0;
+	 check_lives_en <= 1'b0;
     check_a_hit_en <= 1'b0;
     plot_player_en <= 1'b0;
     plot_alien1_en <= 1'b0;
@@ -350,10 +360,14 @@ module control(
         in_game <= 1'b1;
         rst_delay_en <= 1'b1;
         rst_xy <= 1'b1;
+		  
         //clear_en <= 1'b1;
       end
 		S_CHECK_P_HIT: begin
 		  check_p_hit_en <= 1'b1;
+		end
+		S_CHECK_LIVES: begin
+		  check_lives_en <= 1'b1;
 		end
 		S_CHECK_A_HIT: begin
 		  check_a_hit_en <= 1'b1;
@@ -404,6 +418,7 @@ module datapath(
     input in_game,
     input rst_xy,
 	 input check_p_hit_en,
+	 input check_lives_en,
 	 input check_a_hit_en,
     input plot_player_en,
     input plot_alien1_en,
@@ -418,6 +433,7 @@ module datapath(
 
     // Outputs to countrol
     output reg bullet_flying,
+	 output reg a1bullet_flying,
 	 output reg player_hit,
 	 output reg [3:0] player_lives,
 	 output reg aliens_eliminated,
@@ -458,24 +474,25 @@ module datapath(
 	 reg alien1_hit, alien2_hit, alien3_hit;
 	 
 	 wire a1_fire_ready;
-	 reg [7:0] cur_alien1_x;
+	 reg [7:0] cur_alien2_x;
+	 reg [6:0] cur_alien2_y;
 	 
 	 //Alien 1 path
-	 assign l_alien_col1 = 8'd50;
+	 assign l_alien_col1 = 8'd49;
 	 assign r_alien_col1 = 8'd69;
 	 
 	 //Alien 2 path
-	 assign l_alien_col2 = 8'd70;
+	 assign l_alien_col2 = 8'd69;
 	 assign r_alien_col2 = 8'd89;
 	 
 	 //ALien 3 path
-	 assign l_alien_col3 = 8'd90;
+	 assign l_alien_col3 = 8'd89;
 	 assign r_alien_col3 = 8'd109;
 
     wire [7:0] alien1_x;
     wire [6:0] alien1_y;
-	 wire [7:0] a1bullet_x;
-    wire [6:0] a1bullet_y;
+	 wire [7:0] a2bullet_x;
+    wire [6:0] a2bullet_y;
 	 wire a1bullet_flying_wire;
 
     wire [7:0] alien2_x;
@@ -492,6 +509,10 @@ module datapath(
     reg clear_cnt_en;
     reg [7:0] clear_x;
     reg [6:0] clear_y;
+	 
+	 
+	 reg [7:0] border_x;
+    reg [6:0] border_y;
 
     wire plot_player_finish;
 	 wire plot_alien1_finish;
@@ -550,8 +571,9 @@ module datapath(
   bullet PlayerBullet(
 		.clk(clk),
       .resetn(resetn),
-		.offest(2'b11),
+		.offset(2'b11),
 		.playerXPos(cur_player_x),
+		.playerYPos(7'd111),
       .update_xy_en(update_xy_en),
 		.btn_fire(btn_fire),
       .x(bullet_x),
@@ -566,13 +588,14 @@ module datapath(
 	 bullet Alien1Bullet(
       .clk(clk),
       .resetn(resetn),
-		.offest(2'b01),
-      .playerXPos(cur_alien1_x),
+		.offset(2'b01),
+      .playerXPos(cur_alien2_x),
+		.playerYPos(cur_alien2_y),
       .update_xy_en(update_xy_en),
       .btn_fire(a1_fire_ready),
-      .x(a1bullet_x),
-      .y(a1bullet_y),
-      .a1bullet_flying(a1bullet_flying_Wire),
+      .x(a2bullet_x),
+      .y(a2bullet_y),
+      .bullet_flying(a1bullet_flying_Wire),
       .plot_finish(a1_bullet_offset_done)
       );
 	
@@ -596,6 +619,7 @@ module datapath(
       // By defaults...
       next_move <= 0;
 		bullet_flying <= bullet_flying_Wire;
+		a1bullet_flying <= a1bullet_flying_Wire;
 		
 
       if (!resetn) begin
@@ -620,8 +644,11 @@ module datapath(
         // local params
         current_object <= 0;
         on_next_move <= 0;
-        clear_x <= 0;
-        clear_y <= 0;
+        clear_x <= 48;
+        clear_y <= 45;
+		  
+		  border_x <= 0;
+        border_y <= 0;
 		  alien1_hit <= 0;
 		  alien2_hit <= 0;
 		  alien3_hit <= 0;
@@ -630,24 +657,51 @@ module datapath(
       end // End if (!resetn)
       else if (in_game) begin
       if (rst_xy) begin
-        //
+        // draw border
+	
+			
+			  clear_done <= 0;
+			  x_out <= border_x;
+			  y_out <= border_y;
+			  colour_out <= 3'b010;
+			  wren <= 1'b1;
+			  clear_cnt_en <= 1'b1;
+			  
+
+			  if (border_x < 159) begin
+				border_x <= border_x + 1;
+			  end else if (border_x == 159 && border_y < 119) begin
+				border_y <= border_y + 1;
+				border_x <= 0;
+			  end else if (border_x == 159 && border_y == 119) begin
+				clear_done <= 1'b1;
+				border_x <= 0;
+				border_y <= 0;
+			  end
+
+
       end
 		if (check_p_hit_en) begin
-			if (a1bullet_x == player_x && a1bullet_y == player_y) begin
+			if (a2bullet_x == player_x && a2bullet_y == player_y) begin
 				player_hit <= 1'b1;
 				player_lives <= player_lives - 4'd1;
 			end	
 		end
+		if (check_lives_en) begin
+			if (player_lives > 0) begin
+				player_hit <= 0;
+		  end 
+		end
 		if (check_a_hit_en) begin
-			if (bullet_x == alien1_x && bullet_y == alien1_y) begin
+			if ((alien1_x-1) <= bullet_x && bullet_x <= (alien1_x+1) && bullet_y == alien1_y) begin
 				alien1_hit <= 1'b1;
 				player_score <= player_score + 4'd3;
 			end
-			else if (bullet_x == alien2_x && bullet_y == alien2_y) begin
+			else if ((alien2_x-1) <= bullet_x && bullet_x <= (alien2_x+1) && bullet_y == alien2_y) begin
 				alien2_hit <= 1'b1;
 				player_score <= player_score + 4'd1;
 			end
-			else if (bullet_x == alien3_x && bullet_y == alien3_y) begin
+			else if ((alien3_x-1) <= bullet_x && bullet_x <= (alien3_x+1) && bullet_y == alien3_y) begin
 				alien3_hit <= 1'b1;
 				player_score <= player_score + 4'd1;
 			end
@@ -660,13 +714,18 @@ module datapath(
         x_out <= player_x;
         y_out <= player_y;
 		  cur_player_x <= player_x;
-        colour_out <= 3'b010; // Green
+		  if (player_lives > 0) begin
+				colour_out <= 3'b010; // Green
+		  end else begin
+				colour_out <= 3'b000; // white
+		  end
+        
         wren <= 1'b1;
         plot_player_done <= plot_player_finish;
       end else if (plot_alien1_en) begin
-	x_out <= alien1_x;
-        y_out <= alien1_y;
-		  cur_alien1_x <= alien1_x;
+		  x_out <= alien1_x;
+		  y_out <= alien1_y;
+		  
 		  if (alien1_hit) begin
 		    colour_out <= 0; // Invisible
 		  end else begin
@@ -678,6 +737,8 @@ module datapath(
 		end else if (plot_alien2_en) begin
         x_out <= alien2_x;
         y_out <= alien2_y;
+		  cur_alien2_x <= alien2_x;
+		  cur_alien2_y <= alien2_y;
 		  if (alien2_hit) begin
 		    colour_out <= 0; // Invisible
 		  end else begin
@@ -696,17 +757,26 @@ module datapath(
 		  end
         wren <= 1'b1;
 		  plot_aliens_done <= plot_alien3_finish;
-      end else if (plot_bullet_en) begin
+      end else if (plot_bullet_en) begin //player bullet
 		  x_out <= bullet_x;
         y_out <= bullet_y;
-		  colour_out <= 3'b111;
+		  if (alien1_hit || alien2_hit || alien3_hit) begin
+		    colour_out <= 0;
+		  end else begin
+			 colour_out <= 3'b011;
+		  end
+		  colour_out <= 3'b011;
         wren <= 1'b1;
 		  
         plot_bullet_done <= plot_Pbullet_finish;
-      end else if (plot_a1bullet_en) begin
-		  x_out <= a1bullet_x;
-		  y_out <= a1bullet_y;
-		  colour_out <= 3'b111;
+      end else if (plot_a1bullet_en && !alien2_hit ) begin // alien bullet
+		  x_out <= a2bullet_x;
+		  y_out <= a2bullet_y;
+		  if (player_hit) begin
+		    colour_out <= 0;
+		  end else begin
+			 colour_out <= 3'b110;
+		  end
 		  wren <= 1'b1;	  
 		  plot_a1bullet_done <= a1_bullet_offset_done;
 		end
@@ -730,15 +800,15 @@ module datapath(
         clear_cnt_en <= 1'b1;
         
 
-        if (clear_x < 159) begin
+        if (clear_x < 110) begin
          clear_x <= clear_x + 1;
-        end else if (clear_x == 159 && clear_y < 119) begin
+        end else if (clear_x == 110 && clear_y < 119) begin
          clear_y <= clear_y + 1;
-         clear_x <= 0;
-        end else if (clear_x == 159 && clear_y == 119) begin
+         clear_x <= 48;
+        end else if (clear_x == 110 && clear_y == 119) begin
          clear_done <= 1'b1;
-         clear_x <= 0;
-         clear_y <= 0;
+         clear_x <= 48;
+         clear_y <= 45;
         end
 
       end
@@ -766,7 +836,8 @@ module alien(
       // starting position of player
       x_offset <= 2'b01;
       x <= l_border;
-      y <= 7'd15;
+      y <= 7'd45;
+	
       plot_finish <= 0;
     end
     else begin
@@ -812,14 +883,14 @@ module player(
     if (!resetn) begin
       // starting position of player
       x_offset <= 0;
-      x <= 8'd68;
+      x <= 8'd79;
       y <= 7'd111;
       plot_finish <= 0;
     end
     else begin
-      if (btn_left && !btn_right && (x != 0)) begin // left btn pressed
+      if (btn_left && !btn_right && (x != 49)) begin // left btn pressed
         x_offset <= 2'b11; // offset = -1
-      end else if (btn_right && !btn_left && (x != 159)) begin // right btn pressed
+      end else if (btn_right && !btn_left && (x != 109)) begin // right btn pressed
         x_offset <= 2'b01; // offset = 1
       end else begin
         x_offset <= 0;
@@ -845,6 +916,7 @@ module bullet(
   input btn_fire,
   //Outputs
   input [7:0] playerXPos,
+  input [6:0] playerYPos,
   input [1:0] offset,
   output reg [7:0] x,
   output reg [6:0] y,
@@ -857,13 +929,14 @@ module bullet(
 
   always @(posedge clk) begin
     plot_finish <= 0;
+	 
     if (!resetn) begin
       // starting position of player
       y_offset <= 0;
       x <= 8'd68;
-      y <= 7'd111;
+      y <= playerYPos;
       plot_finish <= 0;
-		bullet_flying <= 1'b0;
+		bullet_flying <= 0;
 		//colour <= 3'b000;
     end
     else begin
@@ -874,10 +947,11 @@ module bullet(
 			//colour <= 3'b111;
 		end
 		
-      if ((y == 0)) begin // left btn pressed
+		
+      if ((y == 0) || (y == 44)) begin // left btn pressed
         y_offset <= 0; // offset = -1
 		  //colour <= 3'b000;
-		  y <= 7'd111;
+		  y <= playerYPos;
 		  bullet_flying <= 0;
 		end
       if (update_xy_en && bullet_flying) begin
@@ -906,7 +980,7 @@ module onehertzdelay(clkout, clk, resetn);
 
 		if (!resetn) begin
 			counter <= 24999999;
-			clkout <= 0;
+			clkout <= 1;
 		end 
 		if (counter == 0) begin
 			counter <= 24999999;
@@ -1053,31 +1127,29 @@ module oneshot(output reg pulse_out, input trigger_in, input clk);
   end 
 endmodule
 
-module hex_7seg(hex_digit,seg);
-  input [3:0] hex_digit;
-  output [6:0] seg;
-  reg [6:0] seg;
-  // seg = {g,f,e,d,c,b,a};
-  // 0 is on and 1 is off
 
-  always @ (hex_digit)
-  case (hex_digit)
-		  4'h0: seg = 7'b1000000;
-		  4'h1: seg = 7'b1111001; 	// ---a----
-		  4'h2: seg = 7'b0100100; 	// |	  |
-		  4'h3: seg = 7'b0110000; 	// f	  b
-		  4'h4: seg = 7'b0011001; 	// |	  |
-		  4'h5: seg = 7'b0010010; 	// ---g----
-		  4'h6: seg = 7'b0000010; 	// |	  |
-		  4'h7: seg = 7'b1111000; 	// e	  c
-		  4'h8: seg = 7'b0000000; 	// |	  |
-		  4'h9: seg = 7'b0011000; 	// ---d----
-		  4'ha: seg = 7'b0001000;
-		  4'hb: seg = 7'b0000011;
-		  4'hc: seg = 7'b1000110;
-		  4'hd: seg = 7'b0100001;
-		  4'he: seg = 7'b0000110;
-		  4'hf: seg = 7'b0001110;
-  endcase
-
-endmodule 
+module hex_decoder(hex_digit, segments);
+    input [3:0] hex_digit;
+    output reg [6:0] segments;
+   
+    always @(*)
+        case (hex_digit)
+            4'h0: segments = 7'b100_0000;
+            4'h1: segments = 7'b111_1001;
+            4'h2: segments = 7'b010_0100;
+            4'h3: segments = 7'b011_0000;
+            4'h4: segments = 7'b001_1001;
+            4'h5: segments = 7'b001_0010;
+            4'h6: segments = 7'b000_0010;
+            4'h7: segments = 7'b111_1000;
+            4'h8: segments = 7'b000_0000;
+            4'h9: segments = 7'b001_1000;
+            4'hA: segments = 7'b000_1000;
+            4'hB: segments = 7'b000_0011;
+            4'hC: segments = 7'b100_0110;
+            4'hD: segments = 7'b010_0001;
+            4'hE: segments = 7'b000_0110;
+            4'hF: segments = 7'b000_1110;   
+            default: segments = 7'h7f;
+        endcase
+endmodule
